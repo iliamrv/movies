@@ -1,0 +1,151 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.price {
+  font-weight: bold;
+}
+
+/* smoothie grid */
+.smoothie-grid {
+  margin-top: 40px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 40px;
+}
+.description {
+  width: 100%;
+
+  box-sizing: border-box;
+  border-radius: 6px;
+  position: relative;
+
+  padding: 20px;
+  max-width: 480px;
+  /* margin: 0 auto; */
+  border-radius: 6px;
+  background-color: rgba(238, 238, 238, 0.566);
+}
+.smoothie-card .rating {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background: var(--secondary);
+  color: #fff;
+  border-radius: 6px;
+  width: 40px;
+  height: 0;
+  padding: 20px 0;
+  line-height: 0px;
+  text-align: center;
+}
+
+/* forms */
+form {
+  padding: 20px;
+  max-width: 480px;
+  /* margin: 0 auto; */
+  border-radius: 6px;
+  background-color: rgba(238, 238, 238, 0.566);
+}
+
+.message {
+  padding: 20px;
+  margin-top: 10px;
+  max-width: 480px;
+  /* margin: 0 auto; */
+  border-radius: 6px;
+  background-color: rgba(238, 238, 238, 0.566);
+}
+
+.success {
+  background-color: #4ade80;
+}
+
+.error {
+  background-color: #fde047;
+}
+
+form input,
+form textarea {
+  display: block;
+  width: 100%;
+  padding: 6px;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  margin: 10px 0 20px 0;
+}
+form button {
+  background: var(--primary);
+  color: #333;
+  border: 0;
+  border-radius: 6px;
+  padding: 6px 8px;
+
+  cursor: pointer;
+}
+
+nav {
+  margin: 10px auto 80px;
+  padding: 10px 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  border-bottom: 1px solid #ddd;
+}
+nav a {
+  margin-left: 12px;
+}
+nav .logo {
+  margin-right: auto;
+}
+
+/* order-by buttons */
+.order-by button {
+  margin-right: 10px;
+  background: var(--primary);
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.rating-2 {
+  background-color: #fee2e2;
+}
+
+.rating-3 {
+  background-color: #eef6f2;
+}
+
+.rating-4 {
+  background-color: #e7f6ef;
+}
+
+.rating-5 {
+  background-color: #cfecde;
+}
+
+.rating-6 {
+  background-color: #b7e2cd;
+}
+
+.rating-7 {
+  background-color: #9fd9bd;
+}
+
+.rating-8 {
+  background-color: #87cfac;
+}
+
+.rating-9 {
+  background-color: #6fc59b;
+}
+
+.rating-10 {
+  background-color: #57bb8a;
+}
+
+.asc {
+  font-weight: bold;
+  border-bottom: 1px solid #ccc;
+}
