@@ -56,16 +56,7 @@ export default function Page() {
           title
         </button> */}
 
-        {isLoading ? (
-          <Loading />
-        ) : (
-          <Table
-            setIsActive={setIsActive}
-            setOrderBy={setOrderBy}
-            newItems={newItems}
-            handleSort={handleSort}
-          />
-        )}
+        {isLoading ? <Loading /> : <Table newItems={newItems} />}
       </div>
     </>
   );
