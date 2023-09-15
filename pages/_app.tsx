@@ -1,5 +1,3 @@
-// import Link from "next/link";
-// import Router from "next/router";
 import { Roboto_Mono } from "next/font/google";
 import Layout from "../components/Layout";
 const roboto = Roboto_Mono({ subsets: ["latin"] });

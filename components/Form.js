@@ -18,6 +18,7 @@ function Form() {
   const [comment, setComment] = useState("");
   const [imdb, setImdb] = useState("");
   const [formError, setFormError] = useState(null);
+  const [formSuccess, setFormSuccess] = useState(null);
   // const [userRating, setUserRating] = useState("");
 
   const handleSubmit = async (e) => {
@@ -48,6 +49,7 @@ function Form() {
     if (data) {
       console.log(data);
       setFormError(null);
+      setFormSuccess("The record is created");
       router.push("/");
     }
   };
@@ -113,6 +115,11 @@ function Form() {
       </button>
 
       {formError && <p className="error">{formError}</p>}
+      {formSuccess && (
+        <div className="message">
+          <p className="success">{formSuccess}</p>
+        </div>
+      )}
     </form>
   );
 }

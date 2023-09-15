@@ -1,28 +1,22 @@
 import { useState } from "react";
 import Link from "next/link";
-// import Filter from "./Filter";
-// import Sort from "./Sort";
 import ImdbPanel from "./ImdbPanel";
-
+import { classNames } from "primereact/utils";
 //theme
-import "primereact/resources/themes/lara-light-indigo/theme.css";
+// import "primereact/resources/themes/lara-light-indigo/theme.css";
 
 //core
 import "primereact/resources/primereact.min.css";
 
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
-// import { JoinRight } from "@mui/icons-material";
+
 import { FilterMatchMode } from "primereact/api";
 import { InputText } from "primereact/inputtext";
 
 function Table({ newItems }) {
-  // const [ratingFilter, setRatingFilter] = useState("");
-  // const [search, setSearch] = useState("");
-
   const [imdbInfo, setImdbInfo] = useState("");
   const [imdbPanel, setImdbPanel] = useState(true);
-  // const [btnState, setBtnState] = useState(false);
 
   const linkTitle = (newItems) => {
     return (
@@ -39,29 +33,11 @@ function Table({ newItems }) {
     global: { value: null, matchMode: FilterMatchMode.CONTAINS },
   });
 
-  // function resetFields() {
-  //   setRatingFilter("");
-  //   setSearch("");
-  // }
-
-  // console.log(ratingFilter);
-
-  // const handleClick = (e) => {
-  //   setIsAct((current) => !current);
-  //   // console.log(btnState);
-
-  //   setOrderBy(e.target.value);
-
-  //   // console.log(isAct);
-  // };
-
-  // function handleInfo(imdbid) {
-  //   if (imdbid) {
-  //     setImdbInfo(imdbid);
-  //     console.log(e.target.value);
-  //   }
-
-  // setImdbPanel(true);
+  function resetFields(e) {
+    setFilters("");
+    // console.log(filters.global.value);
+    e.target.value = "";
+  }
 
   return (
     <div>
@@ -77,6 +53,9 @@ function Table({ newItems }) {
         /> */}
 
         <InputText
+          onClick={resetFields}
+          className="shadow  rounded  text-gray-700 "
+          placeholder="Search"
           onInput={(e) => {
             setFilters({
               global: {
@@ -97,9 +76,7 @@ function Table({ newItems }) {
           filters={filters}
         >
           <Column field="id" header="ID" />
-
           <Column field="title" header="title" body={linkTitle} sortable />
-
           <Column field="director" header="director" sortable />
           <Column field="year" header="year" sortable />
           <Column
