@@ -29,7 +29,7 @@ function Form() {
       // !comment ||
       !director ||
       !year ||
-      !watchTime ||
+      // !watchTime ||
       // !rating ||
       !imdb
     ) {
@@ -43,11 +43,11 @@ function Form() {
       .select();
 
     if (error) {
-      console.log(error);
+      // console.log(error);
       setFormError("Please fill in all the fields correctly.");
     }
     if (data) {
-      console.log(data);
+      // console.log(data);
       setFormError(null);
       setFormSuccess("The record is created");
       router.push("/");

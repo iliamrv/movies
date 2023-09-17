@@ -100,13 +100,14 @@ nav .logo {
   margin-right: auto;
 }
 
-/* order-by buttons */
-.order-by button {
-  margin-right: 10px;
-  background: var(--primary);
-  border: 0;
-  border-radius: 6px;
-  cursor: pointer;
+.rating {
+  transition: box-shadow 0.2s;
+  color: #fff;
+  border-radius: 10%;
+}
+
+.rating-na {
+  color: rgba(31, 41, 55, 0.8);
 }
 
 .rating-2 {
@@ -114,11 +115,11 @@ nav .logo {
 }
 
 .rating-3 {
-  background-color: #eef6f2;
+  background-color: #ffb1b1;
 }
 
 .rating-4 {
-  background-color: #e7f6ef;
+  background-color: #ffb1b1;
 }
 
 .rating-5 {
@@ -217,12 +218,21 @@ nav .logo {
   border-radius: 10%;
 }
 .p-paginator .p-paginator-pages .p-paginator-page.p-highlight {
-  background: #eef2ff;
+  background: #f3f4f6;
   border-color: #eef2ff;
-  color: #4338ca;
+  font-weight: bold;
 }
 .p-paginator .p-paginator-pages .p-paginator-page:not(.p-highlight):hover {
   background: #e9ecef;
   border-color: transparent;
   color: #343a40;
+}
+
+.p-datatable-table th {
+  background-color: rgba(238, 238, 238, 0.566);
+  padding: 10px;
+}
+
+tr.p-row-odd {
+  background: #f3f4f6;
 }

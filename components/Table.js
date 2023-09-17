@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import ImdbPanel from "./ImdbPanel";
-import { classNames } from "primereact/utils";
+
 //theme
 // import "primereact/resources/themes/lara-light-indigo/theme.css";
 
@@ -29,29 +29,32 @@ function Table({ newItems }) {
     );
   };
 
+  const ratingTemplate = (newItems) => {
+    return (
+      <span
+        className={
+          "  mr-2 px-2.5 py-0.5  text-center  " +
+          "rating rating-" +
+          (newItems.rating ? newItems.rating : "na")
+        }
+      >
+        {newItems.rating}
+      </span>
+    );
+  };
+
   const [filters, setFilters] = useState({
     global: { value: null, matchMode: FilterMatchMode.CONTAINS },
   });
 
   function resetFields(e) {
     setFilters("");
-    // console.log(filters.global.value);
     e.target.value = "";
   }
 
   return (
     <div>
       <div>
-        {/* <input
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search movie title"
-          className="shadow  rounded  text-gray-700 
-              "
-          id="username"
-          type="text"
-          
-        /> */}
-
         <InputText
           onClick={resetFields}
           className="shadow  rounded  text-gray-700 "
@@ -81,11 +84,12 @@ function Table({ newItems }) {
           <Column field="year" header="year" sortable />
           <Column
             field="rating"
+            body={ratingTemplate}
             className={" text-center  " + "rating-"}
             header="rating"
             sortable
           />
-          <Column field="watchTime" header="watchTime" sortable />
+          <Column field="watchTime" header="watched" sortable />
         </DataTable>
       </div>
 

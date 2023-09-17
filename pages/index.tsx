@@ -16,7 +16,8 @@ export default function Page() {
       const { data: movies, error } = await supabase
         .from(db_name)
         .select("")
-        .limit(1115);
+        .order("id", { ascending: false });
+      // .limit(1115);
       setNewItems(movies);
       setIsLoading(false);
     }
