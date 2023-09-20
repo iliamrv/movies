@@ -2,7 +2,7 @@ import { useRouter } from "next/router";
 import React from "react";
 
 import { useState, useEffect } from "react";
-import supabase from "../src/supabase";
+import supabase from "../../src/supabase";
 import { data } from "autoprefixer";
 import Image from "next/image";
 
@@ -11,7 +11,8 @@ const KEY = "8aab931f";
 
 function Info() {
   var router = useRouter();
-  var id = router.query["id"];
+  var imdb = router.query["imdb"];
+
   const [title, setTitle] = useState("");
   const [director, setDirector] = useState("");
   const [year, setYear] = useState("");
@@ -22,47 +23,47 @@ function Info() {
   const [comment, setComment] = useState("");
   const [formError, setFormError] = useState(null);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
 
-    if (
-      !title ||
-      // !comment ||
-      !director ||
-      !year ||
-      !genre ||
-      // !watchTime ||
-      !rating
-    ) {
-      setFormError("Please fill in all the fields correctly.");
-      return;
-    }
+  //   if (
+  //     !title ||
+  //     // !comment ||
+  //     !director ||
+  //     !year ||
+  //     !genre ||
+  //     // !watchTime ||
+  //     !rating
+  //   ) {
+  //     setFormError("Please fill in all the fields correctly.");
+  //     return;
+  //   }
 
-    const { data: movies, error } = await supabase
-      .from("movies")
-      .update({
-        title,
-        comment,
-        director,
-        year,
-        genre,
-        watchTime,
-        rating,
-      })
-      .eq("id", 1186);
+  //   const { data: movies, error } = await supabase
+  //     .from("movies")
+  //     .update({
+  //       title,
+  //       comment,
+  //       director,
+  //       year,
+  //       genre,
+  //       watchTime,
+  //       rating,
+  //     })
+  //     .eq("id", 1186);
 
-    if (error) {
-      setFormError("Please fill in all the fields correctly.");
-    }
-    if (data) {
-      setFormError(null);
-      router.push("/");
-    }
-  };
+  //   if (error) {
+  //     setFormError("Please fill in all the fields correctly.");
+  //   }
+  //   if (data) {
+  //     setFormError(null);
+  //     router.push("/");
+  //   }
+  // };
 
   // const [error, setError] = useState("");
   const [movie, setMovie] = useState({});
-  const imdb = "tt0017765";
+  // const imdb = "tt0017765";
 
   useEffect(function () {
     async function getMovieDetails() {
@@ -73,7 +74,7 @@ function Info() {
       const data = await res.json();
 
       setMovie(data);
-      console.log(data);
+      // console.log(data);
     }
     getMovieDetails();
   }, []);
@@ -84,7 +85,7 @@ function Info() {
 
         .from("movies")
         .select()
-        .eq("id", 1186)
+        .eq("imdb", imdb)
         .single();
 
       setTitle(movies.title);
@@ -100,6 +101,8 @@ function Info() {
 
     getLPitems();
   }, []);
+
+  console.log("imdb");
 
   return (
     <>
@@ -139,7 +142,7 @@ function Info() {
               </li>
 
               <li>
-                <strong>Watched time</strong>: {watchTime}
+                <strong>Watched date</strong>: {watchTime}
               </li>
               {/* <li>IMDB number: {imdb}</li> */}
 
@@ -150,11 +153,13 @@ function Info() {
           </div>
         </div>
 
-        <p className="text-base description">
-          <strong>Notes</strong>
-          <br />
-          {comment}
-        </p>
+        {comment ? (
+          <p className="text-base description">
+            <strong>Notes</strong>
+            <br />
+            {comment}
+          </p>
+        ) : null}
 
         <button
           className="bg-white text-base hover:bg-gray-100 py-2 px-4 border border-gray-400 rounded shadow "

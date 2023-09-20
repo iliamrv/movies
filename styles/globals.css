@@ -233,6 +233,10 @@ nav .logo {
   padding: 10px;
 }
 
+.p-datatable-table td {
+  padding: 5px 10px 5px 10px;
+}
+
 tr.p-row-odd {
   background: #f3f4f6;
 }

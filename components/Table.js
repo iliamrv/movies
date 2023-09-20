@@ -29,6 +29,23 @@ function Table({ newItems }) {
     );
   };
 
+  const imdb = (newItems) => {
+    return (
+      <>
+        {newItems.imdb ? (
+          <Link
+            className=" no-underline dark:text-blue-500 hover:underline"
+            href={"/imdb/" + newItems.imdb}
+          >
+            <span className="bg-blue-100 text-blue-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full dark:bg-blue-900 dark:text-blue-300">
+              imdb
+            </span>
+          </Link>
+        ) : null}
+      </>
+    );
+  };
+
   const ratingTemplate = (newItems) => {
     return (
       <span
@@ -78,7 +95,9 @@ function Table({ newItems }) {
           totalRecords={3}
           filters={filters}
         >
-          <Column field="id" header="ID" />
+          {/* <Column field="id" header="ID" /> */}
+
+          <Column field="imdb" header="imdb" body={imdb} sortable />
           <Column field="title" header="title" body={linkTitle} sortable />
           <Column field="director" header="director" sortable />
           <Column field="year" header="year" sortable />
