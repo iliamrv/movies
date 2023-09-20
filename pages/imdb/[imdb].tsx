@@ -15,8 +15,6 @@ function Info() {
 
   const [title, setTitle] = useState("");
   const [director, setDirector] = useState("");
-  // const [year, setYear] = useState("");
-  // const [genre, setGenre] = useState("");
 
   const [rating, setRating] = useState("");
 
@@ -26,45 +24,13 @@ function Info() {
   const [poster, setPoster] = useState("");
 
   const [imdbTitle, setImdbTitle] = useState("");
+
+  const [imdbYear, setImdbYear] = useState("");
+  const [imdbGenre, setImdbGenre] = useState("");
+  const [imdbRuntime, setImdbRuntime] = useState("");
+  const [imdbDirector, setImdbDirector] = useState("");
+
   // const [formError, setFormError] = useState(null);
-
-  // const handleSubmit = async (e) => {
-  //   e.preventDefault();
-
-  //   if (
-  //     !title ||
-  //     // !comment ||
-  //     !director ||
-  //     !year ||
-  //     !genre ||
-  //     // !watchTime ||
-  //     !rating
-  //   ) {
-  //     setFormError("Please fill in all the fields correctly.");
-  //     return;
-  //   }
-
-  //   const { data: movies, error } = await supabase
-  //     .from("movies")
-  //     .update({
-  //       title,
-  //       comment,
-  //       director,
-  //       year,
-  //       genre,
-  //       watchTime,
-  //       rating,
-  //     })
-  //     .eq("id", 1186);
-
-  //   if (error) {
-  //     setFormError("Please fill in all the fields correctly.");
-  //   }
-  //   if (data) {
-  //     setFormError(null);
-  //     router.push("/");
-  //   }
-  // };
 
   // const [error, setError] = useState("");
   const [movie, setMovie] = useState({});
@@ -73,7 +39,7 @@ function Info() {
   useEffect(function () {
     async function getMovieDetails() {
       const res = await fetch(
-        `http://www.omdbapi.com/?apikey=${KEY}&i=${imdb}`
+        `https://www.omdbapi.com/?apikey=${KEY}&i=${imdb}`
       );
 
       const data = await res.json();
@@ -81,6 +47,10 @@ function Info() {
       setMovie(data);
       setPoster(data.Poster);
       setImdbTitle(data.Title);
+      setImdbYear(data.Year);
+      setImdbGenre(data.Genre);
+      setImdbRuntime(data.Runtime);
+      setImdbDirector(data.Director);
       // console.log(data);
     }
     getMovieDetails();
@@ -97,13 +67,10 @@ function Info() {
 
       setTitle(movies.title);
       setDirector(movies.director);
-      // setYear(movies.year);
-      // setGenre(movies.genre);
+
       setRating(movies.rating);
       setWatchTime(movies.watchTime);
       setComment(movies.comment);
-
-      // console.log(movies.title);
     }
 
     getLPitems();
@@ -122,7 +89,7 @@ function Info() {
                 width={500}
                 height={500}
                 className="object-cover w-full rounded-t-lg h-96 md:h-auto md:w-48 md:rounded-none md:rounded-l-lg"
-                alt="Picture of the author"
+                alt="Movie pic"
               />
             </div>
           </div>
@@ -132,24 +99,23 @@ function Info() {
               <li>
                 <strong>Original title</strong>: {imdbTitle}
               </li>
-              {/* <li>
-                <strong>Director</strong>: {movie.Director} ({director})
-              </li> */}
-              {/* <li>
-                <strong>Year</strong>: {movie.Year}
-              </li> */}
-              {/* <li>
-                <strong>Genre</strong>: {movie.Genre}
-              </li> */}
+              <li>
+                <strong>Director</strong>: {imdbDirector} ({director})
+              </li>
+              <li>
+                <strong>Year</strong>: {imdbYear}
+              </li>
+              <li>
+                <strong>Genre</strong>: {imdbGenre}
+              </li>
 
-              {/* <li>
-                <strong>Runtime</strong>: {movie.Runtime}
-              </li> */}
+              <li>
+                <strong>Runtime</strong>: {imdbRuntime}
+              </li>
 
               <li>
                 <strong>Watched date</strong>: {watchTime}
               </li>
-              {/* <li>IMDB number: {imdb}</li> */}
 
               <li>
                 <strong>My rating</strong>: {rating}
