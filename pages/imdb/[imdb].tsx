@@ -3,7 +3,7 @@ import React from "react";
 
 import { useState, useEffect } from "react";
 import supabase from "../../src/supabase";
-import { data } from "autoprefixer";
+// import { data } from "autoprefixer";
 import Image from "next/image";
 
 // const db_name = `movies`;
@@ -15,13 +15,18 @@ function Info() {
 
   const [title, setTitle] = useState("");
   const [director, setDirector] = useState("");
-  const [year, setYear] = useState("");
-  const [genre, setGenre] = useState("");
+  // const [year, setYear] = useState("");
+  // const [genre, setGenre] = useState("");
 
   const [rating, setRating] = useState("");
+
   const [watchTime, setWatchTime] = useState("");
   const [comment, setComment] = useState("");
-  const [formError, setFormError] = useState(null);
+
+  const [poster, setPoster] = useState("");
+
+  const [imdbTitle, setImdbTitle] = useState("");
+  // const [formError, setFormError] = useState(null);
 
   // const handleSubmit = async (e) => {
   //   e.preventDefault();
@@ -74,6 +79,8 @@ function Info() {
       const data = await res.json();
 
       setMovie(data);
+      setPoster(data.Poster);
+      setImdbTitle(data.Title);
       // console.log(data);
     }
     getMovieDetails();
@@ -90,8 +97,8 @@ function Info() {
 
       setTitle(movies.title);
       setDirector(movies.director);
-      setYear(movies.year);
-      setGenre(movies.genre);
+      // setYear(movies.year);
+      // setGenre(movies.genre);
       setRating(movies.rating);
       setWatchTime(movies.watchTime);
       setComment(movies.comment);
@@ -102,8 +109,6 @@ function Info() {
     getLPitems();
   }, []);
 
-  console.log("imdb");
-
   return (
     <>
       <div className="prose lg:prose-xl mt-10 my-10 md:px-5">
@@ -113,7 +118,7 @@ function Info() {
           <div>
             <div>
               <Image
-                src={movie.Poster}
+                src={poster}
                 width={500}
                 height={500}
                 className="object-cover w-full rounded-t-lg h-96 md:h-auto md:w-48 md:rounded-none md:rounded-l-lg"
@@ -125,21 +130,21 @@ function Info() {
           <div>
             <ul className="text-base">
               <li>
-                <strong>Original title</strong>: {movie.Title}
+                <strong>Original title</strong>: {imdbTitle}
               </li>
-              <li>
+              {/* <li>
                 <strong>Director</strong>: {movie.Director} ({director})
-              </li>
-              <li>
+              </li> */}
+              {/* <li>
                 <strong>Year</strong>: {movie.Year}
-              </li>
-              <li>
+              </li> */}
+              {/* <li>
                 <strong>Genre</strong>: {movie.Genre}
-              </li>
+              </li> */}
 
-              <li>
+              {/* <li>
                 <strong>Runtime</strong>: {movie.Runtime}
-              </li>
+              </li> */}
 
               <li>
                 <strong>Watched date</strong>: {watchTime}
