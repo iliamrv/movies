@@ -26,11 +26,9 @@ export default function Page() {
 
   return (
     <>
-      <div className="prose max-w-none mt-10 my-10 md:px-5">
-        <h1>Movies Database</h1>
+      <h1>Movies Database</h1>
 
-        {isLoading ? <Loading /> : <Table newItems={newItems} />}
-      </div>
+      {isLoading ? <Loading /> : <Table newItems={newItems} />}
     </>
   );
 }

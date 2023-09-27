@@ -1,4 +1,5 @@
 import { useState } from "react";
+
 import Link from "next/link";
 import ImdbPanel from "./ImdbPanel";
 
@@ -98,6 +99,7 @@ function Table({ newItems }) {
           {/* <Column field="id" header="ID" /> */}
 
           <Column field="imdb" header="imdb" body={imdb} sortable />
+
           <Column field="title" header="title" body={linkTitle} sortable />
           <Column field="director" header="director" sortable />
           <Column field="year" header="year" sortable />

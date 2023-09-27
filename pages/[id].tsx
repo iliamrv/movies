@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import supabase from "../src/supabase";
 import StarRating from "../components/StarRating";
-import Form from "../components/Form";
+// import Form from "../components/Form";
 
 const db_name = `movies`;
 
@@ -99,96 +99,96 @@ const Update = () => {
 
   return (
     <>
-      <div className="prose lg:prose-xl mt-10 my-10 md:px-5">
-        <h1>Update {title}</h1>
+      <h1>
+        Update <span className="highlight">{title}</span>
+      </h1>
 
-        {/* <Form /> */}
+      {/* <Form /> */}
 
-        <form>
-          <label htmlFor="title">Title:</label>
+      <form>
+        <label htmlFor="title">Title:</label>
+        <input
+          type="text"
+          id="title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+
+        <label htmlFor="director">Director:</label>
+        <input
+          type="text"
+          id="director"
+          value={director}
+          onChange={(e) => setDirector(e.target.value)}
+        />
+
+        <label htmlFor="year">Year:</label>
+        <input
+          type="text"
+          id="year"
+          value={year}
+          onChange={(e) => setYear(e.target.value)}
+        />
+
+        <div className="mb-5">
+          <label htmlFor="rating">Rating:</label>
           <input
-            type="text"
-            id="title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            type="number"
+            id="rating"
+            value={rating}
+            onChange={(e) => setRating(e.target.value)}
           />
 
-          <label htmlFor="director">Director:</label>
-          <input
-            type="text"
-            id="director"
-            value={director}
-            onChange={(e) => setDirector(e.target.value)}
-          />
+          <StarRating maxRating={10} onSetRating={setRating} />
+        </div>
 
-          <label htmlFor="year">Year:</label>
-          <input
-            type="text"
-            id="year"
-            value={year}
-            onChange={(e) => setYear(e.target.value)}
-          />
+        <label htmlFor="watchtime">Watch time:</label>
+        <input
+          type="date"
+          id="watchtime"
+          value={watchTime}
+          onChange={(e) => setWatchTime(e.target.value)}
+        />
 
-          <div className="mb-5">
-            <label htmlFor="rating">Rating:</label>
-            <input
-              type="number"
-              id="rating"
-              value={rating}
-              onChange={(e) => setRating(e.target.value)}
-            />
+        <label htmlFor="comment">Comment:</label>
+        <textarea
+          id="comment"
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+        />
 
-            <StarRating maxRating={10} onSetRating={setRating} />
+        <label htmlFor="imdb">IMDb ID:</label>
+        <input
+          id="imdb"
+          value={imdb}
+          onChange={(e) => setImdb(e.target.value)}
+        />
+
+        <button
+          onClick={handleUpdate}
+          className="bg-white hover:bg-gray-100 py-2 px-4 border border-gray-400 rounded shadow"
+        >
+          Update
+        </button>
+
+        <button
+          className="bg-white hover:bg-gray-100 py-2 px-4 mx-4 border border-gray-400 rounded shadow"
+          onClick={handleDelete}
+        >
+          Delete
+        </button>
+
+        {formError && (
+          <div className="message">
+            <p className="error">{formError}</p>
           </div>
-
-          <label htmlFor="watchtime">Watch time:</label>
-          <input
-            type="date"
-            id="watchtime"
-            value={watchTime}
-            onChange={(e) => setWatchTime(e.target.value)}
-          />
-
-          <label htmlFor="comment">Comment:</label>
-          <textarea
-            id="comment"
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-          />
-
-          <label htmlFor="imdb">IMDb ID:</label>
-          <input
-            id="imdb"
-            value={imdb}
-            onChange={(e) => setImdb(e.target.value)}
-          />
-
-          <button
-            onClick={handleUpdate}
-            className="bg-white hover:bg-gray-100 py-2 px-4 border border-gray-400 rounded shadow"
-          >
-            Update
-          </button>
-
-          <button
-            className="bg-white hover:bg-gray-100 py-2 px-4 mx-4 border border-gray-400 rounded shadow"
-            onClick={handleDelete}
-          >
-            Delete
-          </button>
-
-          {formError && (
-            <div className="message">
-              <p className="error">{formError}</p>
-            </div>
-          )}
-          {formSuccess && (
-            <div className="message">
-              <p className="success">{formSuccess}</p>
-            </div>
-          )}
-        </form>
-      </div>
+        )}
+        {formSuccess && (
+          <div className="message">
+            <p className="success">{formSuccess}</p>
+          </div>
+        )}
+      </form>
     </>
   );
 };

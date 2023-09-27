@@ -7,11 +7,9 @@ const Create = () => {
 
   return (
     <>
-      <div className="prose lg:prose-xl mt-10 my-10 md:px-5">
-        <h1>Create new record</h1>
+      <h1>Create new record</h1>
 
-        <Form />
-      </div>
+      <Form />
     </>
   );
 };
