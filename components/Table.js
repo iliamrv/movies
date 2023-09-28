@@ -91,14 +91,13 @@ function Table({ newItems }) {
           stripedRows
           value={newItems}
           paginator
-          rows={50}
+          paginatorTemplate="  PrevPageLink CurrentPageReport NextPageLink "
+          rows={70}
           // rowsPerPageOptions={[1, 2, 3]}
-          totalRecords={3}
+          // totalRecords={3}
           filters={filters}
         >
           {/* <Column field="id" header="ID" /> */}
-
-          <Column field="imdb" header="imdb" body={imdb} sortable />
 
           <Column field="title" header="title" body={linkTitle} sortable />
           <Column field="director" header="director" sortable />
@@ -111,6 +110,7 @@ function Table({ newItems }) {
             sortable
           />
           <Column field="watchTime" header="watched" sortable />
+          <Column field="imdb" header="imdb" body={imdb} sortable />
         </DataTable>
       </div>
 

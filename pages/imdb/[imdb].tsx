@@ -78,68 +78,64 @@ function Info() {
 
   return (
     <>
-      <div className="prose lg:prose-xl mt-10 my-10 md:px-5">
-        <h1>{title}</h1>
-
-        <div className="flex items-center  gap-2">
-          <div>
-            <div>
-              <Image
-                src={poster}
-                width={500}
-                height={500}
-                className="object-cover w-full rounded-t-lg h-96 md:h-auto md:w-48 md:rounded-none md:rounded-l-lg"
-                alt="Movie pic"
-              />
-            </div>
-          </div>
-
-          <div>
-            <ul className="text-base">
-              <li>
-                <strong>Original title</strong>: {imdbTitle}
-              </li>
-              <li>
-                <strong>Director</strong>: {imdbDirector} ({director})
-              </li>
-              <li>
-                <strong>Year</strong>: {imdbYear}
-              </li>
-              <li>
-                <strong>Genre</strong>: {imdbGenre}
-              </li>
-
-              <li>
-                <strong>Runtime</strong>: {imdbRuntime}
-              </li>
-
-              <li>
-                <strong>Watched date</strong>: {watchTime}
-              </li>
-
-              <li>
-                <strong>My rating</strong>: {rating}
-              </li>
-            </ul>
-          </div>
+      <div className=" sm:flex  gap-2 ">
+        <div>
+          <Image
+            src={poster}
+            width={500}
+            height={500}
+            className="object-cover w-full rounded-t-lg "
+            alt="Movie pic"
+          />
         </div>
 
-        {comment ? (
-          <p className="text-base description">
-            <strong>Notes</strong>
-            <br />
-            {comment}
-          </p>
-        ) : null}
+        <div className="my-12 mx-10">
+          {" "}
+          <h1>{title}</h1>
+          <ul className="text-base">
+            <li>
+              <strong>Original title</strong>: {imdbTitle}
+            </li>
+            <li>
+              <strong>Director</strong>: {imdbDirector} ({director})
+            </li>
+            <li>
+              <strong>Year</strong>: {imdbYear}
+            </li>
+            <li>
+              <strong>Genre</strong>: {imdbGenre}
+            </li>
 
-        <button
-          className="bg-white text-base hover:bg-gray-100 py-2 px-4 border border-gray-400 rounded shadow "
-          type="button"
-          onClick={() => router.back()}
-        >
-          Click here to go back
-        </button>
+            <li>
+              <strong>Runtime</strong>: {imdbRuntime}
+            </li>
+
+            <li>
+              <strong>Watched date</strong>: {watchTime}
+            </li>
+
+            <li>
+              <strong>My rating</strong>: {rating}
+            </li>
+          </ul>
+        </div>
       </div>
+
+      {comment ? (
+        <p className="text-base description">
+          <strong>Notes</strong>
+          <br />
+          {comment}
+        </p>
+      ) : null}
+
+      <button
+        className="bg-white text-base hover:bg-gray-100 py-2 px-4 border border-gray-400 rounded shadow "
+        type="button"
+        onClick={() => router.back()}
+      >
+        Click here to go back
+      </button>
     </>
   );
 }

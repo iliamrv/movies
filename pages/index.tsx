@@ -24,11 +24,5 @@ export default function Page() {
     getLPitems();
   }, []);
 
-  return (
-    <>
-      <h1>Movies Database</h1>
-
-      {isLoading ? <Loading /> : <Table newItems={newItems} />}
-    </>
-  );
+  return <>{isLoading ? <Loading /> : <Table newItems={newItems} />}</>;
 }

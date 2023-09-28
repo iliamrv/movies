@@ -99,13 +99,13 @@ const Update = () => {
 
   return (
     <>
-      <h1>
+      <h1 className="text-center">
         Update <span className="highlight">{title}</span>
       </h1>
 
       {/* <Form /> */}
 
-      <form>
+      <form className="mx-auto">
         <label htmlFor="title">Title:</label>
         <input
           type="text"
