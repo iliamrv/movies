@@ -3,6 +3,8 @@ import { useState } from "react";
 import Link from "next/link";
 import ImdbPanel from "./ImdbPanel";
 
+import { Tag } from "primereact/tag";
+import { Dropdown } from "primereact/dropdown";
 //theme
 // import "primereact/resources/themes/lara-light-indigo/theme.css";
 
@@ -63,6 +65,7 @@ function Table({ newItems }) {
 
   const [filters, setFilters] = useState({
     global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    status: { value: null, matchMode: FilterMatchMode.EQUALS },
   });
 
   function resetFields(e) {
@@ -90,6 +93,7 @@ function Table({ newItems }) {
         <DataTable
           stripedRows
           value={newItems}
+          filterDisplay="row"
           paginator
           paginatorTemplate="  PrevPageLink CurrentPageReport NextPageLink "
           rows={70}
