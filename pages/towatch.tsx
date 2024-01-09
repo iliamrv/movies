@@ -4,7 +4,7 @@ import Table from "../components/Table";
 import Loading from "./loading";
 
 export default function Page() {
-  const db_name = `movies`;
+  const db_name = `random_movies_2024`;
   const [isLoading, setIsLoading] = useState(false);
   const [newItems, setNewItems] = useState([]);
   // const [orderBy, setOrderBy] = useState("id");
@@ -16,7 +16,7 @@ export default function Page() {
       const { data: movies, error } = await supabase
         .from(db_name)
         .select("")
-        .eq("watched_mark", true)
+        .eq("watched_mark", false)
         .order("id", { ascending: false });
       // .limit(1115);
       setNewItems(movies);

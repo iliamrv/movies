@@ -21,6 +21,13 @@ function Navbar() {
           >
             Add movie
           </Link>
+
+          <Link
+            className="bg-white hover:bg-gray-100 py-2 px-4 border border-gray-400 rounded shadow no-underline"
+            href="/towatch"
+          >
+            To watch
+          </Link>
         </nav>
       </div>
     </div>
