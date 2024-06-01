@@ -28,7 +28,7 @@ const Update = () => {
   const handleDelete = async (e) => {
     e.preventDefault();
 
-    const { data, error } = await supabase.from("movies").delete().eq("id", id);
+    const { data, error } = await supabase.from("movies_2024").delete().eq("id", id);
 
     if (error) {
       // console.log(error);
@@ -57,7 +57,7 @@ const Update = () => {
     }
 
     const { data, error } = await supabase
-      .from("movies")
+      .from("movies_2024")
       .update([{ title, director, year, watchTime, comment, rating, imdb }])
       .eq("id", id);
 
@@ -75,7 +75,7 @@ const Update = () => {
   useEffect(() => {
     const fetchMovies = async () => {
       const { data: movies, error } = await supabase
-        .from("movies")
+        .from("movies_2024")
         .select()
         .eq("id", id)
         .single();
@@ -96,6 +96,11 @@ const Update = () => {
 
     fetchMovies();
   }, [id]);
+
+  const handleBack = () => {
+    router.back();
+  };
+
 
   return (
     <>
@@ -176,6 +181,14 @@ const Update = () => {
           onClick={handleDelete}
         >
           Delete
+        </button>
+
+
+        <button
+          type="button" // Ensure this button doesn't submit the form
+          onClick={handleBack}
+          className="bg-white hover:bg-gray-100 py-2 px-4 border border-gray-400 rounded shadow">
+          Go back
         </button>
 
         {formError && (

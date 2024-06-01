@@ -1,12 +1,10 @@
 import { useState } from "react";
 
 import Link from "next/link";
-import ImdbPanel from "./ImdbPanel";
-
-import { Tag } from "primereact/tag";
-import { Dropdown } from "primereact/dropdown";
+import { FilterMatchMode } from "primereact/api";
 //theme
 // import "primereact/resources/themes/lara-light-indigo/theme.css";
+import styled from "styled-components";
 
 //core
 import "primereact/resources/primereact.min.css";
@@ -14,12 +12,21 @@ import "primereact/resources/primereact.min.css";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 
-import { FilterMatchMode } from "primereact/api";
-import { InputText } from "primereact/inputtext";
+
+
 
 function Table({ newItems }) {
-  const [imdbInfo, setImdbInfo] = useState("");
-  const [imdbPanel, setImdbPanel] = useState(true);
+
+  const [filters, setFilters] = useState({
+    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    status: { value: null, matchMode: FilterMatchMode.EQUALS },
+  });
+
+
+  function resetFields(e) {
+    setFilters("");
+    e.target.value = "";
+  }
 
   const linkTitle = (newItems) => {
     return (
@@ -50,35 +57,38 @@ function Table({ newItems }) {
   };
 
   const ratingTemplate = (newItems) => {
+
     return (
       <span
         className={
-          "  mr-2 px-2.5 py-0.5  text-center  " +
-          "rating rating-" +
-          (newItems.rating ? newItems.rating : "na")
+          "mr-2 px-2.5 py-0.5 text-center " +
+          (newItems.rating ? `rating rating-${newItems.rating}` : "rating-na")
         }
       >
-        {newItems.rating}
+        {newItems.rating ? newItems.rating : " "}
       </span>
     );
   };
 
-  const [filters, setFilters] = useState({
-    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-    status: { value: null, matchMode: FilterMatchMode.EQUALS },
-  });
 
-  function resetFields(e) {
-    setFilters("");
-    e.target.value = "";
-  }
 
   return (
     <div>
+
+
+
       <div>
-        <InputText
+
+
+
+
+
+
+
+
+        <input
           onClick={resetFields}
-          className="shadow  rounded  text-gray-700 "
+          className="search shadow  rounded  text-gray-700 w-1/2 mt-10"
           placeholder="Search"
           onInput={(e) => {
             setFilters({
@@ -90,13 +100,23 @@ function Table({ newItems }) {
           }}
         />
 
+
+
+
+
+
+
+
+
+
+
         <DataTable
           stripedRows
           value={newItems}
           filterDisplay="row"
           paginator
           paginatorTemplate="  PrevPageLink CurrentPageReport NextPageLink "
-          rows={70}
+          rows={30}
           // rowsPerPageOptions={[1, 2, 3]}
           // totalRecords={3}
           filters={filters}
@@ -124,3 +144,5 @@ function Table({ newItems }) {
 }
 
 export default Table;
+
+

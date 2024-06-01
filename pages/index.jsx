@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import supabase from "../src/supabase";
 import Table from "../components/Table";
 import Loading from "./loading";
+import styled from "styled-components";
 
 export default function Page() {
-  const db_name = `movies`;
+  const db_name = `movies_2024`;
   const [isLoading, setIsLoading] = useState(false);
   const [newItems, setNewItems] = useState([]);
   // const [orderBy, setOrderBy] = useState("id");
@@ -25,5 +26,33 @@ export default function Page() {
     getLPitems();
   }, []);
 
-  return <>{isLoading ? <Loading /> : <Table newItems={newItems} />}</>;
+  function resetFields(e) {
+    setFilters("");
+    e.target.value = "";
+  }
+
+
+  return <>
+
+
+
+
+
+
+
+
+
+
+    {isLoading ? <Loading /> : <Table newItems={newItems} />}</>;
 }
+
+
+
+
+const StyledInput = styled.input`  
+  padding: 7px;
+  margin-top: 10px ;
+  
+  
+`;
+

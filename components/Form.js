@@ -24,34 +24,29 @@ function Form() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (
-      !title ||
-      // !comment ||
-      !director ||
-      !year ||
-      // !watchTime ||
-      // !rating ||
-      !imdb
-    ) {
-      setFormError("Please fill in all the fields correctly.");
+    // Remove imdb from the validation check
+    if (!title || !director || !year) {
+      setFormError("Please fill in all mandatory fields.");
       return;
     }
 
     const { data, error } = await supabase
-      .from("movies")
+      .from("movies_2024")
       .insert([{ title, director, year, watchTime, comment, rating, imdb }])
       .select();
 
     if (error) {
-      // console.log(error);
       setFormError("Please fill in all the fields correctly.");
     }
     if (data) {
-      // console.log(data);
       setFormError(null);
       setFormSuccess("The record is created");
       router.push("/");
     }
+  };
+
+  const handleBack = () => {
+    router.back();
   };
 
   return (
@@ -83,14 +78,7 @@ function Form() {
 
         <div className="mb-5">
           <label htmlFor="rating">Rating:</label>
-          <input
-            type="number"
-            id="rating"
-            value={rating}
-            onChange={(e) => setRating(e.target.value)}
-          />
-
-          <StarRating maxRating={10} onSetRating={setRating} />
+          <StarRating maxRating={10} onSetRating={setRating} ratingValue={rating} />
         </div>
 
         <label htmlFor="watchtime">Watch time:</label>
@@ -115,9 +103,17 @@ function Form() {
           onChange={(e) => setImdb(e.target.value)}
         />
 
-        <button className="bg-white hover:bg-gray-100 py-2 px-4 border border-gray-400 rounded shadow">
+        <button className="bg-white hover:bg-gray-100 py-2 px-4 border border-gray-400 rounded shadow mr-5">
           Create Record
         </button>
+
+        <button
+          type="button" // Ensure this button doesn't submit the form
+          onClick={handleBack}
+          className="bg-white hover:bg-gray-100 py-2 px-4 border border-gray-400 rounded shadow">
+          Go back
+        </button>
+
 
         {formError && <p className="error">{formError}</p>}
         {formSuccess && (

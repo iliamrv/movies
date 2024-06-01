@@ -188,9 +188,7 @@ nav .logo {
   margin-left: 0.5rem;
   margin-right: 0.5rem;
 }
-.p-paginator .p-paginator-page-input .p-inputtext {
-  max-width: 2.5rem;
-}
+
 .p-paginator .p-paginator-current {
   background-color: transparent;
   border: 0 none;
@@ -240,3 +238,13 @@ tr.p-row-odd {
   margin: -2px -6px;
   padding: 2px 6px;
 }
+
+
+.logo { padding: 5px;
+  border: 1px solid #cce6ff;
+  border-radius: 3px;  
+  background: linear-gradient(to bottom, #feffff 0%, #cee7ff 100%);
+  align-content: center;
+ justify-content: center;
+  margin-right: 50px;  
+  border-radius: 13px}
