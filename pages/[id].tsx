@@ -3,6 +3,11 @@ import { useRouter } from "next/router";
 import supabase from "../src/supabase";
 import StarRating from "../components/StarRating";
 // import Form from "../components/Form";
+import { Edit3, Trash2, ArrowLeft } from 'lucide-react';
+
+import { StyledButtons } from "../styles/globalStyles"
+
+
 
 const db_name = `movies`;
 
@@ -169,27 +174,23 @@ const Update = () => {
           onChange={(e) => setImdb(e.target.value)}
         />
 
-        <button
-          onClick={handleUpdate}
-          className="bg-white hover:bg-gray-100 py-2 px-4 border border-gray-400 rounded shadow"
-        >
-          Update
-        </button>
 
-        <button
-          className="bg-white hover:bg-gray-100 py-2 px-4 mx-4 border border-gray-400 rounded shadow"
-          onClick={handleDelete}
-        >
-          Delete
-        </button>
+        <StyledButtons>
+          <button type="button" onClick={handleUpdate} className="button">
+            <Edit3 size={16} style={{ marginRight: '8px' }} /> Update
+          </button>
+
+          <button type="button" onClick={handleDelete} className="button">
+            <Trash2 size={16} style={{ marginRight: '8px' }} /> Delete
+          </button>
+
+          <button type="button" onClick={handleBack} className="button">
+            <ArrowLeft size={16} style={{ marginRight: '8px' }} /> Go Back
+          </button>
+        </StyledButtons>
 
 
-        <button
-          type="button" // Ensure this button doesn't submit the form
-          onClick={handleBack}
-          className="bg-white hover:bg-gray-100 py-2 px-4 border border-gray-400 rounded shadow">
-          Go back
-        </button>
+
 
         {formError && (
           <div className="message">
@@ -207,3 +208,5 @@ const Update = () => {
 };
 
 export default Update;
+
+

@@ -53,7 +53,7 @@ export default function Stats() {
 	const watchedPerYear = {};
 	movieData.forEach(movie => {
 		const year = new Date(movie.watchTime).getFullYear();
-		if (year >= 2000) {
+		if (year >= 2012) {
 			watchedPerYear[year] = (watchedPerYear[year] || 0) + 1;
 		}
 	});
@@ -61,7 +61,7 @@ export default function Stats() {
 	const watchedPerYearData = {
 		labels: Object.keys(watchedPerYear).sort(),
 		datasets: [{
-			label: 'Movies Watched per Year (from 2000)',
+			label: 'Movies Watched per Year (from 2012)',
 			data: Object.values(watchedPerYear),
 			backgroundColor: 'rgba(75, 192, 192, 0.5)',
 		}]
@@ -75,7 +75,7 @@ export default function Stats() {
 				<Bar data={ratingsChartData} options={{ scales: { y: { beginAtZero: true } } }} />
 			</div>
 			<div>
-				<h2>Movies Watched per Year (from 2000)</h2>
+				<h2>Movies Watched per Year (from 2012)</h2>
 				<Bar data={watchedPerYearData} options={{ scales: { y: { beginAtZero: true } } }} />
 			</div>
 		</div>

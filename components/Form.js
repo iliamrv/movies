@@ -1,4 +1,9 @@
 import React from "react";
+import { StyledButtons } from "../styles/globalStyles";
+
+import { CirclePlus, ArrowLeft } from 'lucide-react';
+
+
 import supabase from "../src/supabase";
 import { useRouter } from "next/router";
 import { useState } from "react";
@@ -103,17 +108,20 @@ function Form() {
           onChange={(e) => setImdb(e.target.value)}
         />
 
-        <button className="bg-white hover:bg-gray-100 py-2 px-4 border border-gray-400 rounded shadow mr-5">
-          Create Record
-        </button>
+        <StyledButtons>
+          <button className="button">
+            <CirclePlus size={16} style={{ marginRight: '8px' }} />
+            Create Record
+          </button>
 
-        <button
-          type="button" // Ensure this button doesn't submit the form
-          onClick={handleBack}
-          className="bg-white hover:bg-gray-100 py-2 px-4 border border-gray-400 rounded shadow">
-          Go back
-        </button>
-
+          <button
+            type="button" // Ensure this button doesn't submit the form
+            onClick={handleBack}
+            className="button">
+            <ArrowLeft size={16} style={{ marginRight: '8px' }} />
+            Go back
+          </button>
+        </StyledButtons>
 
         {formError && <p className="error">{formError}</p>}
         {formSuccess && (

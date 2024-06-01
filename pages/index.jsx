@@ -49,10 +49,3 @@ export default function Page() {
 
 
 
-const StyledInput = styled.input`  
-  padding: 7px;
-  margin-top: 10px ;
-  
-  
-`;
-

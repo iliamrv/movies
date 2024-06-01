@@ -1,7 +1,7 @@
 
 import Link from "next/link";
 import { Laptop } from "lucide-react";
-
+import styled from "styled-components";
 
 
 function Navbar() {
@@ -10,9 +10,9 @@ function Navbar() {
   return (
 
 
-    <>
+    <StyledHeader>
 
-      <div className="header flex justify-between items-center ">
+      <div className=" flex justify-between items-center ">
 
 
 
@@ -34,19 +34,6 @@ function Navbar() {
         <div className="flex-1 w-64">
 
 
-          {/* <input
-            onClick={resetFields}
-            className="search shadow  rounded  text-gray-700 w-full"
-            placeholder="Search"
-            onInput={(e) => {
-              setFilters({
-                global: {
-                  value: e.target.value,
-                  matchMode: FilterMatchMode.CONTAINS,
-                },
-              });
-            }}
-          /> */}
 
         </div>
 
@@ -56,20 +43,24 @@ function Navbar() {
 
 
           <Link
-            className="bg-white hover:bg-gray-100 py-2 px-4 border border-gray-400 rounded shadow no-underline mx-5"
+            className="button"
             href="/create"
           >
-
-
-
             Add movie
           </Link>
 
           <Link
-            className="bg-white hover:bg-gray-100 py-2 px-4 border border-gray-400 rounded shadow no-underline"
+            className="button"
             href="/towatch"
           >
             To watch
+          </Link>
+
+          <Link
+            className="button"
+            href="/stats"
+          >
+            Stats
           </Link>
 
         </div>
@@ -81,7 +72,7 @@ function Navbar() {
       </div>
 
 
-    </>
+    </StyledHeader>
 
 
 
@@ -93,3 +84,10 @@ function Navbar() {
 
 export default Navbar;
 
+
+const StyledHeader = styled.div`  
+  padding: 7px;
+  margin-bottom: 50px ;
+  
+  
+`;
