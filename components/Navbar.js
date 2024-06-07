@@ -3,6 +3,14 @@ import Link from "next/link";
 import { Laptop } from "lucide-react";
 import styled from "styled-components";
 
+const StyledHeader = styled.div`  
+  padding: 7px;
+  margin-bottom: 50px ;
+  
+  
+`;
+
+import { Button, StyledButtons } from "../styles/globalStyles";
 
 function Navbar() {
 
@@ -40,29 +48,29 @@ function Navbar() {
         <div className="buttons ">
 
 
+          <StyledButtons>
+            <Button>
+              <Link
+                className="button"
+                href="/createmovie"
+              >
+                Add movie
+              </Link></Button>
 
+            <Button><Link
+              className="button"
+              href="/towatch"
+            >
+              To watch
+            </Link></Button>
 
-          <Link
-            className="button"
-            href="/create"
-          >
-            Add movie
-          </Link>
-
-          <Link
-            className="button"
-            href="/towatch"
-          >
-            To watch
-          </Link>
-
-          <Link
-            className="button"
-            href="/stats"
-          >
-            Stats
-          </Link>
-
+            <Button> <Link
+              className="button"
+              href="/stats"
+            >
+              Stats
+            </Link></Button>
+          </StyledButtons>
         </div>
 
 
@@ -85,9 +93,4 @@ function Navbar() {
 export default Navbar;
 
 
-const StyledHeader = styled.div`  
-  padding: 7px;
-  margin-bottom: 50px ;
-  
-  
-`;
+

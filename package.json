@@ -9,6 +9,7 @@
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
     "@supabase/supabase-js": "^2.26.0",
+    "axios": "^1.7.2",
     "chart.js": "^4.4.3",
     "eslint-config-next": "^14.2.3",
     "lucide-react": "^0.381.0",

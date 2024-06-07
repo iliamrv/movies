@@ -58,13 +58,7 @@ form {
   background-color: rgba(238, 238, 238, 0.566);
 }
 
-.success {
-  background-color: #4ade80;
-}
 
-.error {
-  background-color: #fde047;
-}
 
 form input,
 form textarea {
@@ -249,19 +243,3 @@ tr.p-row-odd {
   margin-right: 50px;  
   border-radius: 13px}
 
-
-.button {
-  
-  padding: 8px 16px;
-  margin-right: 10px;
-  text-decoration: none;
-  color: #333;
-  background-color: #fff;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-
-}
-
-    .button:hover {background-color: #f3f3f3;}

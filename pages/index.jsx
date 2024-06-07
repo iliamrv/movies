@@ -16,9 +16,9 @@ export default function Page() {
       setIsLoading(true);
       const { data: movies, error } = await supabase
         .from(db_name)
-        .select("")
+        .select("*")
         .eq("watched_mark", true)
-        .order("id", { ascending: false });
+        .order("watchTime", { ascending: false });
       // .limit(1115);
       setNewItems(movies);
       setIsLoading(false);

@@ -88,15 +88,15 @@ const Update = () => {
       if (error) {
         // router.push("/");
       }
-      if (movies) {
-        setTitle(movies.title);
-        setDirector(movies.director);
-        setYear(movies.year);
-        setRating(movies.rating);
-        setWatchTime(movies.watchTime);
-        setComment(movies.comment);
-        setImdb(movies.imdb);
-      }
+    if (movies) {
+      setTitle(movies.title || "");
+      setDirector(movies.director || "");
+      setYear(movies.year || "");
+      setRating(movies.rating || "");
+      setWatchTime(movies.watchTime || currentday);  // Ensure this also defaults to `currentday` if null
+      setComment(movies.comment || "");  // Default to an empty string if null
+      setImdb(movies.imdb || "");
+    }
     };
 
     fetchMovies();
@@ -140,17 +140,11 @@ const Update = () => {
           onChange={(e) => setYear(e.target.value)}
         />
 
-        <div className="mb-5">
-          <label htmlFor="rating">Rating:</label>
-          <input
-            type="number"
-            id="rating"
-            value={rating}
-            onChange={(e) => setRating(e.target.value)}
-          />
+          <div className="mb-5">
+        <label htmlFor="rating">Rating:</label>
+        <StarRating maxRating={10} rating={rating} onSetRating={setRating} />
+      </div>
 
-          <StarRating maxRating={10} onSetRating={setRating} />
-        </div>
 
         <label htmlFor="watchtime">Watch time:</label>
         <input
