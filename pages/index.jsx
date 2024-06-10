@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import supabase from "../src/supabase";
 import Table from "../components/Table";
 import Loading from "./loading";
-import styled from "styled-components";
+// import styled from "styled-components";
 
 export default function Page() {
   const db_name = `movies_2024`;
@@ -26,10 +26,10 @@ export default function Page() {
     getLPitems();
   }, []);
 
-  function resetFields(e) {
-    setFilters("");
-    e.target.value = "";
-  }
+  // function resetFields(e) {
+  //   setFilters("");
+  //   e.target.value = "";
+  // }
 
 
   return <>

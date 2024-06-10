@@ -3,11 +3,15 @@ import Layout from "../components/Layout";
 const roboto = Roboto_Mono({ subsets: ["latin"] });
 import Head from "next/head";
 
-import "/styles/globals.css";
+
+
+
 import type { AppProps } from "next/app";
 
 export default function MyApp({ Component, pageProps }: AppProps) {
   return (
+
+   
     <Layout>
 
       <Head>

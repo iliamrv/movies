@@ -3,10 +3,9 @@ import styled from "styled-components";
 
 
 
-
 export const StyledButtons = styled.div`   
  display: flex; /* Aligns children (icon and text) inline */
- justify-content: space-between;
+
 
 `;
 
@@ -14,7 +13,7 @@ export const Button = styled.button`
 
 
   padding: 8px 16px;
-  margin-right: 10px;
+  margin-right: 20px;
   text-decoration: none;
   color: #333;
   background-color: #fff;
@@ -25,6 +24,9 @@ export const Button = styled.button`
   display: flex;
   align-items: center;
  align-self: center;
+ font-weight: 600;
+/* font-size: 1rem; */
+
 
 
 
