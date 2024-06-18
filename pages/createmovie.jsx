@@ -120,8 +120,11 @@ export default function CreateMovie() {
           </InputGroup>
         ))}
         {poster && <Poster src={poster} alt="Movie Poster" />}
+       
         <Info>Runtime: {extraDetails.runtime}</Info>
         <Info>Genre: {extraDetails.genre}</Info>
+
+        
         {extraDetails.ratings.map((rating, index) => (
           <Info key={index}>{rating.Source}: {rating.Value}</Info>
         ))}
