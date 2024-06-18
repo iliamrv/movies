@@ -2,11 +2,8 @@
 import styled from "styled-components";
 
 
-
 export const StyledButtons = styled.div`   
  display: flex; /* Aligns children (icon and text) inline */
-
-
 `;
 
 export const Button = styled.button`  
