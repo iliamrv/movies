@@ -55,7 +55,7 @@ export default function EditMovie() {
     setIsLoading(true);
     setError('');
     try {
-      const response = await fetch(`https://www.omdbapi.com/?i=${imdbID}&apikey=YOUR_OMDB_API_KEY`);
+      const response = await fetch(`https://www.omdbapi.com/?i=${imdbID}&apikey=8aab931f`);
       const data = await response.json();
       if (data.Response === "True") {
         setMovieData(prev => ({
