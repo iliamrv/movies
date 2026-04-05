@@ -1,84 +1,72 @@
-
-
 import Navbar from "./Navbar";
 import styled from "styled-components";
 
-
-
 const Layout = ({ children }) => {
   return (
-    <Wrapper>
-
-
-
+    <PageShell>
       <Navbar />
-
-
-
-
-
-      {children}
-
-
-    </Wrapper>
+      <Wrapper>{children}</Wrapper>
+    </PageShell>
   );
 };
 
-
-
 export default Layout;
 
+const PageShell = styled.div`
+  min-height: 100vh;
+  background: #f6f7fb;
+`;
 
 export const Wrapper = styled.div`
   margin: 0 auto;
-  max-width: 1200px;
+  max-width: 1180px;
+  padding: 0 20px 40px;
   display: flex;
-  flex-direction: column; 
-  /* font-family: var(--font-roboto-mono);   */
+  flex-direction: column;
 
- a {
-  text-decoration: none;
-   color: #333;
-}
+  * {
+    font-family: var(--font-roboto-mono);
+    box-sizing: border-box;
+  }
 
-a:hover {
-  /* text-decoration: underline; */
-  color: #777;
-  /* font-weight: 500; */
-}
+  a {
+    text-decoration: none;
+    color: #1f2937;
+    transition: color 0.18s ease;
+  }
 
+  a:hover {
+    color: #111827;
+  }
 
+  h1,
+  h2,
+  h3 {
+    color: #111827;
+    letter-spacing: -0.02em;
+  }
 
-.description {
-  
-  border-radius: 6px;  
+  .page-title {
+    margin: 6px 0 18px;
+    font-size: 1.8rem;
+    font-weight: 700;
+  }
 
-  padding: 20px;
-  max-width: 480px;
-  /* margin: 0 auto; */
-  border-radius: 6px;
-  background-color: #f9f9f9;
-  font-size: 0.9rem;
-}
+  .description,
+  form,
+  .message {
+    width: 100%;
+    max-width: 560px;
+    padding: 22px;
+    border-radius: 18px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 10px 30px rgba(17, 24, 39, 0.05);
+  }
 
-
-/* forms */
-form {
-  padding: 20px;
-  max-width: 480px;
-  /* margin: 0 auto; */
-  border-radius: 6px;
-  background-color: rgba(238, 238, 238, 0.566);
-}
-
-
-
-
-
-* {
-  font-family: var(--font-roboto-mono);
-}
-
-
-  
+  .description {
+    color: #4b5563;
+    font-size: 0.96rem;
+    line-height: 1.65;
+  }
 `;

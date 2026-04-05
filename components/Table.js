@@ -70,9 +70,8 @@ function Table({ newItems }) {
 
 
       <StyledSearch
-        onClick={resetFields}
-        className="search shadow  rounded  text-gray-700 w-1/2 mt-10"
-        placeholder="Search"
+        type="text"
+        placeholder="Search in collection..."
         onInput={(e) => {
           setFilters({
             global: {
@@ -124,213 +123,163 @@ function Table({ newItems }) {
 export default Table;
 
 
-
 export const StyledSearch = styled.input`
-    border-radius: 0.25rem; /* This is equivalent to 'rounded' in Tailwind which is usually 4px */
+  width: 100%;
+  max-width: 340px;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid #d7dee8;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #111827;
+  outline: none;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
 
-    /* text-gray-700: Set the text color to Tailwind's gray-700 */
+  &::placeholder {
+    color: #94a3b8;
+  }
 
-    width: 50%;
-  
-
-    /* mt-10: Set the top margin */
-    margin-top: 2.5rem; /* Tailwind's spacing scale for mt-10 is 40px, which is roughly 2.5rem */
-
-  display: block;
- 
-  padding: 10px;
-
-  border: 1px solid #ccc;
-  margin: 10px 0 20px 0;
-
-
-`
-
+  &:focus {
+    border-color: #b8c7dc;
+    box-shadow: 0 0 0 4px rgba(191, 208, 229, 0.25);
+  }
+`;
 
 export const StyledTable = styled.div`
-
-
-table {
- 
- 
-  font-size: 0.9rem;
-}
-
-
-
-
-tbody tr:hover {
-background: #f3f3f3;
-
-}
-
-
-
-
-
-
-.p-paginator .p-paginator-first,
-.p-paginator .p-paginator-prev,
-.p-paginator .p-paginator-next,
-.p-paginator .p-paginator-last {
-  background-color: transparent;
-  border: 0 none;
-  color: #6c757d;
-  min-width: 2.5rem;
-  height: 2.5rem;
-  margin: 0.143rem;
-  transition: box-shadow 0.2s;
-  border-radius: 10%;
-}
-.p-paginator .p-paginator-first:not(.p-disabled):not(.p-highlight):hover,
-.p-paginator .p-paginator-prev:not(.p-disabled):not(.p-highlight):hover,
-.p-paginator .p-paginator-next:not(.p-disabled):not(.p-highlight):hover,
-.p-paginator .p-paginator-last:not(.p-disabled):not(.p-highlight):hover {
-  background: #e9ecef;
-  border-color: transparent;
-  color: #343a40;
-}
-.p-paginator .p-paginator-first {
-  border-top-left-radius: 50%;
-  border-bottom-left-radius: 50%;
-}
-.p-paginator .p-paginator-last {
-  border-top-right-radius: 50%;
-  border-bottom-right-radius: 50%;
-}
-.p-paginator .p-dropdown {
-  margin-left: 0.5rem;
-  height: 2.5rem;
-}
-.p-paginator .p-dropdown .p-dropdown-label {
-  padding-right: 0;
-}
-.p-paginator .p-paginator-page-input {
-  margin-left: 0.5rem;
-  margin-right: 0.5rem;
-}
-
-.p-paginator .p-paginator-current {
-  background-color: transparent;
-  border: 0 none;
-  color: #6c757d;
-  min-width: 2.5rem;
-  height: 2.5rem;
-  margin: 0.143rem;
-  padding: 0 0.5rem;
-}
-.p-paginator .p-paginator-pages .p-paginator-page {
-  background-color: transparent;
-  border: 0 none;
-  color: #6c757d;
-  min-width: 2.5rem;
-  height: 2.5rem;
-  margin: 0.143rem;
-  transition: box-shadow 0.2s;
-
-  border-radius: 10%;
-}
-.p-paginator .p-paginator-pages .p-paginator-page.p-highlight {
-  background: #f3f4f6;
-  border-color: #eef2ff;
-  font-weight: bold;
-}
-.p-paginator .p-paginator-pages .p-paginator-page:not(.p-highlight):hover {
-  background: #e9ecef;
-  border-color: transparent;
-  color: #343a40;
-}
-
-.p-datatable-table th {
-  background-color: rgba(238, 238, 238, 0.566);
-  padding: 10px;
-}
-
-.p-datatable-table td {
-  padding: 8px;
-}
-
-tr.p-row-odd {
-  background: #f3f4f6;
-}
-
-
-
-  td:first-child { width: 35%; }
-  td:nth-child(2) { width: 35%; }
-  td:nth-child(3) { width: 10%; }
-  td:nth-child(4) { width: 5%; }
-
-
-
-
-
-
-@layer primereact {
- 
- 
-  .p-datatable .p-datatable-tbody > tr > td {
-   
-    border-top: 1px solid #ccc;
-   
+  .table-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 20px;
+    padding: 22px;
+    box-shadow: 0 10px 30px rgba(17, 24, 39, 0.05);
   }
-  
-  
 
+  .table-top {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
 
-.rating {
-  text-align: center;
-}
-  
+  .table-title {
+    margin: 0 0 4px;
+    font-size: 1.5rem;
+    line-height: 1.1;
+    color: #111827;
+  }
 
-.rating span {
-  transition: box-shadow 0.2s;
-  color: #fff;
-  border-radius: 15%;
-  padding: 3px  7px;
-  text-align: center;
-  
-}
+  .table-subtitle {
+    margin: 0;
+    color: #6b7280;
+    font-size: 0.95rem;
+  }
 
-.rating-na {
-  color: rgba(31, 41, 55, 0.8);
-}
+  table {
+    font-size: 0.95rem;
+  }
 
-.rating-2 {
-  background-color: #fee2e2;
-}
+  tbody tr {
+    transition: background-color 0.18s ease;
+  }
 
-.rating-3 {
-  background-color: #ffb1b1;
-}
+  tbody tr:hover {
+    background: #f8fafc;
+  }
 
-.rating-4 {
-  background-color: #ffb1b1;
-}
+  .p-datatable-wrapper {
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid #edf0f4;
+  }
 
-.rating-5 {
-  background-color: #cfecde;
-}
+  .p-datatable-table th {
+    background-color: #f8fafc;
+    color: #475569;
+    padding: 14px 12px;
+    font-size: 0.84rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid #e5e7eb;
+  }
 
-.rating-6 {
-  background-color: #b7e2cd;
-}
+  .p-datatable-table td {
+    padding: 14px 12px;
+    border-top: 1px solid #eef2f7;
+    color: #1f2937;
+  }
 
-.rating-7 {
-  background-color: #9fd9bd;
-}
+  tr.p-row-odd {
+    background: #fcfcfd;
+  }
 
-.rating-8 {
-  background-color: #87cfac;
-}
+  td:first-child {
+    width: 35%;
+  }
 
-.rating-9 {
-  background-color: #6fc59b;
-}
+  td:nth-child(2) {
+    width: 35%;
+  }
 
-.rating-10 {
-  background-color: #57bb8a;
-}
+  td:nth-child(3) {
+    width: 10%;
+  }
 
-  
+  td:nth-child(4) {
+    width: 5%;
+  }
+
+  .p-paginator {
+    background: transparent;
+    border: 0;
+    padding: 16px 0 0;
+  }
+
+  .p-paginator .p-paginator-page,
+  .p-paginator .p-paginator-first,
+  .p-paginator .p-paginator-prev,
+  .p-paginator .p-paginator-next,
+  .p-paginator .p-paginator-last {
+    border-radius: 10px;
+  }
+
+  .p-paginator .p-paginator-pages .p-paginator-page.p-highlight {
+    background: #eef4ff;
+    color: #1d4ed8;
+    font-weight: 700;
+  }
+
+  .rating {
+    text-align: center;
+  }
+
+  .rating span {
+    transition: box-shadow 0.2s;
+    color: #111827;
+    border-radius: 999px;
+    padding: 4px 10px;
+    text-align: center;
+    font-weight: 700;
+    display: inline-block;
+    min-width: 34px;
+  }
+
+  .rating-na {
+    color: rgba(31, 41, 55, 0.8);
+    background: #f3f4f6;
+  }
+
+  .rating-2 { background-color: #fee2e2; }
+  .rating-3 { background-color: #fecaca; }
+  .rating-4 { background-color: #fbcaca; }
+  .rating-5 { background-color: #e5f4ea; }
+  .rating-6 { background-color: #d9efe2; }
+  .rating-7 { background-color: #caead8; }
+  .rating-8 { background-color: #bae3cd; }
+  .rating-9 { background-color: #a8dcc1; }
+  .rating-10 { background-color: #95d3b3; }
 `;
