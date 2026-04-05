@@ -1,0 +1,329 @@
+import { useState, useEffect } from "react";
+import { useRouter } from "next/router";
+import supabase from "../src/supabase";
+import StarRating from "../components/StarRating";
+import { Edit3, Trash2, ArrowLeft, Plus } from "lucide-react";
+
+import { StyledButtons, Button } from "../styles/globalStyles";
+
+const Update = () => {
+  const router = useRouter();
+  const { id } = router.query;
+
+  const [title, setTitle] = useState("");
+  const [director, setDirector] = useState("");
+  const [year, setYear] = useState("");
+  const [watchDatesText, setWatchDatesText] = useState("");
+
+  const today = new Date();
+  const date = today.setDate(today.getDate());
+  const currentday = new Date(date).toISOString().split("T")[0];
+
+  const [rating, setRating] = useState("");
+  const [watchTime, setWatchTime] = useState(currentday);
+  const [comment, setComment] = useState("");
+  const [imdb, setImdb] = useState("");
+  const [formError, setFormError] = useState(null);
+  const [formSuccess, setFormSuccess] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const parsedWatchDates = watchDatesText
+    .split(",")
+    .map((d) => d.trim())
+    .filter(Boolean);
+
+  const sortedWatchDates = [...parsedWatchDates].sort((a, b) =>
+    a < b ? 1 : -1
+  );
+
+  const handleDelete = async (e) => {
+    e.preventDefault();
+
+    const { error } = await supabase
+      .from("movies_2024")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      setFormError("Error while deleting the movie.");
+      return;
+    }
+
+    router.push("/");
+  };
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+
+    if (!title || !director || !year || !watchTime) {
+      setFormError("Please fill in all the fields correctly.");
+      setFormSuccess(null);
+      return;
+    }
+
+    const { error } = await supabase
+      .from("movies_2024")
+      .update([
+        {
+          title,
+          director,
+          year,
+          watchTime,
+          comment,
+          rating,
+          imdb,
+          watch_dates: parsedWatchDates,
+        },
+      ])
+      .eq("id", id);
+
+    if (error) {
+      setFormError("Please fill in all the fields correctly.");
+      setFormSuccess(null);
+      return;
+    }
+
+    setFormError(null);
+    setFormSuccess("Updated");
+    router.push("/");
+  };
+
+  const addTodayToWatchHistory = () => {
+    setWatchDatesText((prev) => {
+      const items = prev
+        .split(",")
+        .map((d) => d.trim())
+        .filter(Boolean);
+
+      if (items.includes(currentday)) return prev;
+
+      return prev ? `${prev}, ${currentday}` : currentday;
+    });
+  };
+
+  useEffect(() => {
+    if (!id) return;
+
+    const fetchMovies = async () => {
+      setLoading(true);
+
+      const { data: movie, error } = await supabase
+        .from("movies_2024")
+        .select()
+        .eq("id", id)
+        .single();
+
+      if (error) {
+        setFormError("Failed to load movie.");
+        setLoading(false);
+        return;
+      }
+
+      if (movie) {
+        setTitle(movie.title || "");
+        setDirector(movie.director || "");
+        setYear(movie.year || "");
+        setRating(movie.rating || "");
+        setWatchTime(movie.watchTime || currentday);
+        setComment(movie.comment || "");
+        setImdb(movie.imdb || "");
+        setWatchDatesText(
+          Array.isArray(movie.watch_dates) ? movie.watch_dates.join(", ") : ""
+        );
+      }
+
+      setLoading(false);
+    };
+
+    fetchMovies();
+  }, [id, currentday]);
+
+  const handleBack = () => {
+    router.back();
+  };
+
+  if (loading) {
+    return <p>Loading...</p>;
+  }
+
+  return (
+    <>
+      <h1 className="text-center">
+        Update <span className="highlight">{title}</span>
+      </h1>
+
+      <div className="watch-history">
+        <div className="watch-history-top">
+          <h3>Watch history</h3>
+
+          <Button type="button" onClick={addTodayToWatchHistory}>
+            <Plus size={16} />
+            Today
+          </Button>
+        </div>
+
+        {sortedWatchDates.length > 0 ? (
+          <ul className="watch-history-list">
+            {sortedWatchDates.map((date, index) => (
+              <li key={`${date}-${index}`}>{date}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="watch-history-empty">No watch history yet.</p>
+        )}
+      </div>
+
+      <form className="mx-auto">
+        <label htmlFor="title">Title:</label>
+        <input
+          type="text"
+          id="title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+
+        <label htmlFor="director">Director:</label>
+        <input
+          type="text"
+          id="director"
+          value={director}
+          onChange={(e) => setDirector(e.target.value)}
+        />
+
+        <label htmlFor="year">Year:</label>
+        <input
+          type="text"
+          id="year"
+          value={year}
+          onChange={(e) => setYear(e.target.value)}
+        />
+
+        <div className="mb-5">
+          <label htmlFor="rating">Rating:</label>
+          <StarRating maxRating={10} rating={rating} onSetRating={setRating} />
+        </div>
+
+        <label htmlFor="watchtime">Watch time:</label>
+        <input
+          type="date"
+          id="watchtime"
+          value={watchTime}
+          onChange={(e) => setWatchTime(e.target.value)}
+        />
+
+        <label htmlFor="watch_dates">Watch dates:</label>
+        <textarea
+          id="watch_dates"
+          value={watchDatesText}
+          onChange={(e) => setWatchDatesText(e.target.value)}
+          placeholder="2026-04-05, 2026-03-20"
+        />
+
+        <p className="watch-dates-hint">
+          Use comma-separated dates in YYYY-MM-DD format.
+        </p>
+
+        <Button type="button" onClick={addTodayToWatchHistory}>
+          <Plus size={16} /> Today
+        </Button>
+
+        <label htmlFor="comment">Comment:</label>
+        <textarea
+          id="comment"
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+        />
+
+        <label htmlFor="imdb">IMDb ID:</label>
+        <input
+          id="imdb"
+          value={imdb}
+          onChange={(e) => setImdb(e.target.value)}
+        />
+
+        <StyledButtons>
+          <Button type="button" onClick={handleUpdate}>
+            <Edit3 size={16} /> Update
+          </Button>
+
+          <Button type="button" $secondary onClick={handleDelete}>
+            <Trash2 size={16} /> Delete
+          </Button>
+
+          <Button type="button" $secondary onClick={handleBack}>
+            <ArrowLeft size={16} /> Go Back
+          </Button>
+        </StyledButtons>
+
+        {formError && (
+          <div className="message">
+            <p className="error">{formError}</p>
+          </div>
+        )}
+
+        {formSuccess && (
+          <div className="message">
+            <p className="success">{formSuccess}</p>
+          </div>
+        )}
+      </form>
+
+      <style jsx>{`
+        .watch-history {
+          width: 100%;
+          max-width: 560px;
+          margin: 0 auto 20px;
+          padding: 20px;
+          background: #fff;
+          border: 1px solid #e5e7eb;
+          border-radius: 16px;
+          box-shadow: 0 10px 30px rgba(17, 24, 39, 0.05);
+        }
+
+        .watch-history-top {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          flex-wrap: wrap;
+          margin-bottom: 14px;
+        }
+
+        .watch-history-top h3 {
+          margin: 0;
+        }
+
+        .watch-history-list {
+          margin: 0;
+          padding-left: 18px;
+        }
+
+        .watch-history-list li {
+          margin-bottom: 6px;
+          color: #374151;
+        }
+
+        .watch-history-empty {
+          margin: 0;
+          color: #6b7280;
+        }
+
+        .watch-dates-hint {
+          margin: -8px 0 16px;
+          color: #6b7280;
+          font-size: 0.88rem;
+        }
+
+        .error {
+          color: #b91c1c;
+        }
+
+        .success {
+          color: #15803d;
+        }
+      `}</style>
+    </>
+  );
+};
+
+export default Update;

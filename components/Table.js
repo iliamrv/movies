@@ -44,7 +44,11 @@ function Table({ newItems }) {
   };
 
 
+  const viewsTemplate = (rowData) => {
+    const count = Array.isArray(rowData.watch_dates) ? rowData.watch_dates.length : 0;
 
+    return <span className="views-badge">{count}</span>;
+  };
 
   const ratingTemplate = (newItems) => {
 
@@ -117,6 +121,7 @@ function Table({ newItems }) {
             header="rating"
             sortable
           />
+          {/* <Column header="Views" body={viewsTemplate} sortable /> */}
           <Column field="watchTime" header="watched" sortable />
           {/* <Column field="imdb" header="imdb" body={imdb} sortable /> */}
         </DataTable>
@@ -163,6 +168,7 @@ export const StyledTable = styled.div`
     box-shadow: 0 10px 30px rgba(17, 24, 39, 0.05);
   }
 
+  
   .table-top {
     display: flex;
     align-items: flex-end;
@@ -326,4 +332,18 @@ export const StyledTable = styled.div`
   .rating-10 {
     box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.12);
   }
+
+  .views-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #1d4ed8;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
 `;
