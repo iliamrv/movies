@@ -1,15 +1,20 @@
 import OpenAI from "openai";
 import supabase from "../../src/supabase";
 
-const openai = new OpenAI({
-	apiKey: process.env.OPENAI_API_KEY,
-});
-
 function safeJsonParse(text) {
+	if (!text) return null;
+
 	try {
 		return JSON.parse(text);
 	} catch {
-		return null;
+		const match = text.match(/\{[\s\S]*\}$/);
+		if (!match) return null;
+
+		try {
+			return JSON.parse(match[0]);
+		} catch {
+			return null;
+		}
 	}
 }
 
@@ -19,13 +24,20 @@ export default async function handler(req, res) {
 	}
 
 	try {
+		if (!process.env.OPENAI_API_KEY) {
+			return res.status(500).json({ error: "Missing OPENAI_API_KEY" });
+		}
+
+		const openai = new OpenAI({
+			apiKey: process.env.OPENAI_API_KEY,
+		});
+
 		const { query } = req.body || {};
 
 		if (!query || !query.trim()) {
 			return res.status(400).json({ error: "Query is required" });
 		}
 
-		// 1. Забираем просмотренные фильмы с оценками
 		const { data: watchedMovies, error: watchedError } = await supabase
 			.from("movies_2024")
 			.select("*")
@@ -36,7 +48,6 @@ export default async function handler(req, res) {
 			return res.status(500).json({ error: watchedError.message });
 		}
 
-		// 2. Забираем текущий to-watch, чтобы не рекомендовать дубли
 		const { data: toWatchMovies, error: toWatchError } = await supabase
 			.from("random_movies_2024")
 			.select("*")
@@ -71,9 +82,6 @@ You are a highly specific personal movie recommendation assistant.
 User request:
 "${query}"
 
-Below is a list of movies the user liked from their own database.
-Use it to infer taste and recommend movies they may enjoy.
-
 Liked movies:
 ${JSON.stringify(likedSummary, null, 2)}
 
@@ -85,39 +93,30 @@ Return ONLY valid JSON in this exact format:
       "title": "Movie title",
       "year": 1994,
       "director": "Director name",
-      "why_this": "A concrete 2-4 sentence explanation. Mention exact films from the user's liked list that this recommendation connects to. Mention the exact director if relevant. Be specific, not generic.",
-      "similar_to": ["Exact liked movie title 1", "Exact liked movie title 2"],
-      "match_factors": ["tone", "pacing", "dialogue", "melancholy", "urban mood"],
-      "because_you_like_director": "Exact director name if this is part of the reason, otherwise empty string"
+      "why_this": "Concrete explanation with exact liked titles",
+      "similar_to": ["Film 1", "Film 2"],
+      "match_factors": ["tone", "pacing"],
+      "because_you_like_director": "Director name or empty string"
     }
   ]
 }
-
-Rules:
-- Recommend up to 10 movies
-- Do not use vague phrases like "close to your favorites", "you may enjoy this", or "similar to films you like" without naming exact titles
-- If you mention similarity, name 1-3 exact films from the user's liked list
-- If director matters, explicitly name the director
-- Explanations must be concrete and personalized
-- Avoid generic mainstream picks unless they strongly fit
-- No markdown
-- No explanation outside JSON
 `;
 
 		const completion = await openai.chat.completions.create({
 			model: "gpt-5.4-mini",
+			response_format: { type: "json_object" },
 			messages: [
 				{
-					role: "developer",
+					role: "system",
 					content:
-						"You generate highly specific movie recommendations as strict JSON only. Never give vague reasons. Always name exact films from the user's liked list when explaining similarity. Always name the director if relevant.",
+						"You generate highly specific movie recommendations as strict JSON only. Never use vague reasons.",
 				},
 				{
 					role: "user",
 					content: prompt,
 				},
 			],
-			temperature: 0.9,
+			temperature: 0.7,
 		});
 
 		const content = completion.choices?.[0]?.message?.content || "";
@@ -151,8 +150,12 @@ Rules:
 			recommendations: cleanedRecommendations,
 		});
 	} catch (error) {
+		console.error("RECOMMENDATIONS_API_ERROR", error);
+
 		return res.status(500).json({
-			error: error.message || "Unexpected server error",
+			error: error?.message || "Unexpected server error",
+			type: error?.type || null,
+			status: error?.status || null,
 		});
 	}
 }
