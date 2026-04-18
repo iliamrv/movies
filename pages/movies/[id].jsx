@@ -2,13 +2,15 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import supabase from "../../src/supabase";
 import Image from "next/image";
+import styled from "styled-components";
 
-import { Edit3, Trash2, ArrowLeft } from "lucide-react";
+import { Edit3, Trash2, ArrowLeft, Film } from "lucide-react";
 import { StyledButtons, Button } from "../../styles/globalStyles";
 
 export default function MovieDetails() {
   const router = useRouter();
   const { id } = router.query;
+
   const [movie, setMovie] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -34,10 +36,12 @@ export default function MovieDetails() {
 
   const displayRatings = (ratings) => {
     if (!ratings) return null;
+
     return ratings.map((rating, index) => (
-      <p key={index}>
-        {rating.Source}: {rating.Value}
-      </p>
+      <RatingItem key={index}>
+        <span>{rating.Source}</span>
+        <strong>{rating.Value}</strong>
+      </RatingItem>
     ));
   };
 
@@ -60,7 +64,6 @@ export default function MovieDetails() {
 
       setMovie(data);
 
-      // IMDb data
       if (data.imdb) {
         const response = await fetch(
           `https://www.omdbapi.com/?i=${data.imdb}&apikey=8aab931f`
@@ -78,7 +81,6 @@ export default function MovieDetails() {
     setIsLoading(false);
   };
 
-  // 👉 НОВОЕ: обработка watch_dates
   const watchDates = Array.isArray(movie?.watch_dates)
     ? movie.watch_dates
     : [];
@@ -88,99 +90,311 @@ export default function MovieDetails() {
   );
 
   return (
-    <div>
+    <PageWrap>
       {isLoading ? (
-        <p>Loading...</p>
+        <StateText>Loading...</StateText>
       ) : movie ? (
-        <div className="description">
-          <h1>{movie.title}</h1>
+        <ContentCard>
+          <TitleBlock>
+            <MovieTitle>
+              {movie.title}
+              {movie.year ? ` (${movie.year})` : ""}
+            </MovieTitle>
+          </TitleBlock>
 
-          {movie.Poster && (
-            <Image
-              src={movie.Poster}
-              width={250}
-              height={250}
-              className="object-cover rounded-t-lg"
-              alt="Movie pic"
-            />
-          )}
+          <TopSection>
+            <PosterColumn>
+              {movie.Poster && movie.Poster !== "N/A" ? (
+                <PosterFrame>
+                  {/* <Image
+                    src={movie.Poster}
+                    alt={movie.title || "Movie poster"}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 280px"
+                    style={{ objectFit: "cover" }}
+                  /> */}
 
-          <p>Director: {movie.director}</p>
-          <p>Director (IMDB): {movie.Director}</p>
-          <p>Year: {movie.year}</p>
-          <p>Runtime: {movie.Runtime}</p>
-          <p>Genre: {movie.Genre}</p>
+                  <img
+  src={movie.Poster}
+  alt={movie.title || "Movie poster"}
+  style={{
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+  }}
+  onError={(e) => {
+    console.log("❌ Poster failed:", {
+      title: movie.title,
+      imdb: movie.imdb,
+      poster: movie.Poster,
+    });
+    e.target.style.display = "none";
+  }}
+  onLoad={() => {
+    console.log("✅ Poster loaded:", movie.title);
+  }}
+/>
 
-          <br />
+                </PosterFrame>
+              ) : (
+                <PosterPlaceholder>
+                  <Film size={34} />
+                  <span>No poster</span>
+                </PosterPlaceholder>
+              )}
+            </PosterColumn>
 
-          <div>
-            <strong>Ratings:</strong>
+            <InfoColumn>
+              <MetaGrid>
+                <MetaCard>
+                  <MetaLabel>Director</MetaLabel>
+                  <MetaValue>{movie.director || "—"}</MetaValue>
+                </MetaCard>
+
+           
+
+                <MetaCard>
+                  <MetaLabel>Year</MetaLabel>
+                  <MetaValue>{movie.year || movie.Year || "—"}</MetaValue>
+                </MetaCard>
+
+                <MetaCard>
+                  <MetaLabel>Runtime</MetaLabel>
+                  <MetaValue>{movie.Runtime || "—"}</MetaValue>
+                </MetaCard>
+
+                <MetaCard>
+                  <MetaLabel>Genre</MetaLabel>
+                  <MetaValue>{movie.Genre || "—"}</MetaValue>
+                </MetaCard>
+
+                <MetaCard>
+                  <MetaLabel>Watch Time</MetaLabel>
+                  <MetaValue>{movie.watchTime || "n/a"}</MetaValue>
+                </MetaCard>
+              </MetaGrid>
+            </InfoColumn>
+          </TopSection>
+
+          <Section>
+            <SectionTitle>Ratings</SectionTitle>
             {movie.Ratings ? (
-              displayRatings(movie.Ratings)
+              <RatingsList>{displayRatings(movie.Ratings)}</RatingsList>
             ) : (
-              <p>No ratings available.</p>
+              <MutedText>No ratings available.</MutedText>
             )}
-          </div>
+          </Section>
 
-          <br />
-
-          <p>
-            <strong>Watch Time:</strong>{" "}
-            {movie.watchTime ? movie.watchTime : "n/a"}
-          </p>
-
-          {/* 🔥 НОВЫЙ БЛОК — история просмотров */}
-          <div style={{ marginTop: "20px" }}>
-            <strong>
-              Watch history{" "}
-              {watchDates.length > 0 && `(${watchDates.length})`}
-            </strong>
+          <Section>
+            <SectionTop>
+              <SectionTitle>
+                Watch history {watchDates.length > 0 ? `(${watchDates.length})` : ""}
+              </SectionTitle>
+            </SectionTop>
 
             {watchDates.length > 0 ? (
-              <ul style={{ marginTop: "8px", paddingLeft: "18px" }}>
+              <HistoryList>
                 {sortedWatchDates.map((date, index) => (
                   <li key={index}>{date}</li>
                 ))}
-              </ul>
+              </HistoryList>
             ) : (
-              <p style={{ color: "#6b7280" }}>
-                No rewatches yet
-              </p>
+              <MutedText>No rewatches yet</MutedText>
             )}
-          </div>
+          </Section>
 
-          <br />
+          <Section>
+            <SectionTitle>Comment</SectionTitle>
+            {movie.comment ? (
+              <CommentBox>{movie.comment}</CommentBox>
+            ) : (
+              <MutedText>No comment</MutedText>
+            )}
+          </Section>
 
-          <div>
-            <p>
-              <strong>Comment:</strong>
-              <br />
-              {movie.comment}
-            </p>
-          </div>
+         <Section>
+  <StyledButtons>
+    <Button onClick={handleEdit}>
+      <Edit3 size={16} /> Edit
+    </Button>
 
-          <StyledButtons>
-            <Button onClick={handleEdit} type="button">
-              <Edit3 size={16} /> Edit
-            </Button>
+    <Button onClick={handleDelete}>
+      <Trash2 size={16} /> Delete
+    </Button>
 
-            <Button onClick={handleDelete} type="button">
-              <Trash2 size={16} /> Delete
-            </Button>
-
-            <Button
-              type="button"
-              onClick={() => router.back()}
-            >
-              <ArrowLeft size={16} /> Go Back
-            </Button>
-          </StyledButtons>
-        </div>
+    <Button onClick={() => router.back()}>
+      <ArrowLeft size={16} /> Go Back
+    </Button>
+  </StyledButtons>
+</Section>
+        </ContentCard>
       ) : (
-        <p>Movie not found.</p>
+        <StateText>Movie not found.</StateText>
       )}
 
-      {error && <p>Error: {error}</p>}
-    </div>
+      {error && <ErrorText>Error: {error}</ErrorText>}
+    </PageWrap>
   );
 }
+
+const PageWrap = styled.div`
+  padding: 28px;
+`;
+
+const ContentCard = styled.div`
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 22px;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(17, 24, 39, 0.05);
+`;
+
+const TitleBlock = styled.div`
+  margin-bottom: 18px;
+`;
+
+const MovieTitle = styled.h1`
+  margin: 0;
+  line-height: 1.2;
+  color: #111827;
+  font-size: clamp(1.9rem, 3vw, 2.6rem);
+  word-break: break-word;
+`;
+
+const TopSection = styled.div`
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+  margin-bottom: 22px;
+
+  @media (max-width: 760px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const PosterColumn = styled.div``;
+
+const PosterFrame = styled.div`
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #f3f4f6;
+`;
+
+const PosterPlaceholder = styled.div`
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: 14px;
+  background: #f3f4f6;
+  color: #9ca3af;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+`;
+
+const InfoColumn = styled.div``;
+
+const MetaGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const MetaCard = styled.div`
+  padding: 14px 16px;
+  border: 1px solid #eef2f7;
+  border-radius: 14px;
+  background: #fcfcfd;
+`;
+
+const MetaLabel = styled.div`
+  margin-bottom: 6px;
+  color: #6b7280;
+  font-size: 0.9rem;
+`;
+
+const MetaValue = styled.div`
+  color: #111827;
+  line-height: 1.45;
+  word-break: break-word;
+`;
+
+const Section = styled.div`
+  margin-top: 22px;
+`;
+
+const SectionTop = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+`;
+
+const SectionTitle = styled.h2`
+  margin: 0 0 12px;
+  font-size: 1.05rem;
+  color: #111827;
+`;
+
+const RatingsList = styled.div`
+  display: grid;
+  gap: 10px;
+`;
+
+const RatingItem = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #eef2f7;
+  border-radius: 12px;
+  background: #fcfcfd;
+  color: #374151;
+`;
+
+const HistoryList = styled.ul`
+  margin: 0;
+  padding-left: 18px;
+
+  li {
+    margin-bottom: 6px;
+    color: #374151;
+  }
+`;
+
+const CommentBox = styled.div`
+  padding: 14px 16px;
+  border: 1px solid #eef2f7;
+  border-radius: 12px;
+  background: #fcfcfd;
+  color: #374151;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+`;
+
+const MutedText = styled.p`
+  margin: 0;
+  color: #6b7280;
+`;
+
+const StateText = styled.p`
+  color: #6b7280;
+`;
+
+const ErrorText = styled.p`
+  margin-top: 14px;
+  color: #b91c1c;
+`;

@@ -1,252 +1,421 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import styled from "styled-components";
 import supabase from "../src/supabase";
-import Table from "../components/Table";
 import Loading from "./loading";
+import { useRouter } from "next/router";
+import {
+  Film,
+  Flame,
+  Star,
+  Clock3,
+  Trash2,
+  RefreshCcw,
+} from "lucide-react";
 
 export default function Page() {
-  const db_name = `random_movies_2024`;
+  const router = useRouter();
 
   const [isLoading, setIsLoading] = useState(false);
-  const [newItems, setNewItems] = useState([]);
+  const [movies, setMovies] = useState([]);
 
-  const [prompt, setPrompt] = useState("Show me comedy films I will probably like");
-  const [aiLoading, setAiLoading] = useState(false);
-  const [tasteSummary, setTasteSummary] = useState("");
-  const [recommendations, setRecommendations] = useState([]);
-  const [aiError, setAiError] = useState("");
-
-  
-  useEffect(function () {
-    async function getLPitems() {
-      setIsLoading(true);
-
-      const { data: movies, error } = await supabase
-        .from(db_name)
-        .select("*")
-        .eq("watched_mark", false)
-        .order("id", { ascending: false });
-
-      if (!error) {
-        setNewItems(movies || []);
-      }
-
-      setIsLoading(false);
-    }
-
-    getLPitems();
+  useEffect(() => {
+    fetchMovies();
   }, []);
 
-  async function handleFindRecommendations() {
-    setAiLoading(true);
-    setAiError("");
-    setTasteSummary("");
-    setRecommendations([]);
-
-    try {
-      const res = await fetch("/api/recommendations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ query: prompt }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to get recommendations");
-      }
-
-      setTasteSummary(data.taste_summary || "");
-      setRecommendations(data.recommendations || []);
-    } catch (error: any) {
-      setAiError(error.message || "Something went wrong");
-    } finally {
-      setAiLoading(false);
-    }
+  function getMovieWeight(movie) {
+    if (movie.priority === "high") return 6;
+    if (movie.priority === "medium") return 3;
+    if (movie.priority === "low") return 1;
+    return 2;
   }
+
+  function getWeightedRandomMovies(items, count = 8) {
+    const result = [];
+    const pool = [...items];
+
+    while (result.length < count && pool.length > 0) {
+      const totalWeight = pool.reduce(
+        (sum, item) => sum + getMovieWeight(item),
+        0
+      );
+
+      let random = Math.random() * totalWeight;
+
+      for (let i = 0; i < pool.length; i++) {
+        random -= getMovieWeight(pool[i]);
+
+        if (random <= 0) {
+          result.push(pool[i]);
+          pool.splice(i, 1);
+          break;
+        }
+      }
+    }
+
+    return result;
+  }
+
+  const fetchMovies = async () => {
+    setIsLoading(true);
+
+    const { data, error } = await supabase
+      .from("movies_2024")
+      .select("*")
+      .eq("watched_mark", false);
+
+    if (!error && data) {
+      const selected = getWeightedRandomMovies(data, 8);
+
+      const enriched = await Promise.all(
+        selected.map(async (movie) => {
+          if (!movie.imdb) return movie;
+
+          try {
+            const res = await fetch(
+              `https://www.omdbapi.com/?i=${movie.imdb}&apikey=8aab931f`
+            );
+            const imdbData = await res.json();
+
+            if (imdbData.Response === "True") {
+              return { ...movie, ...imdbData, posterError: false };
+            }
+          } catch (e) {}
+
+          return { ...movie, posterError: false };
+        })
+      );
+
+      setMovies(enriched);
+    }
+
+    setIsLoading(false);
+  };
+
+  function getDaysAgo(date) {
+    if (!date) return "?";
+    const diff = Date.now() - new Date(date).getTime();
+    return Math.floor(diff / (1000 * 60 * 60 * 24));
+  }
+
+  function isStale(movie) {
+    const days = getDaysAgo(movie.watchTime);
+    return typeof days === "number" && days > 180;
+  }
+
+  function getPrimaryGenre(item) {
+    if (!item.Genre || item.Genre === "N/A") return "";
+    return item.Genre.split(",")[0]?.trim() || "";
+  }
+
+  function getImdbRating(item) {
+    if (!item.imdbRating || item.imdbRating === "N/A") return "";
+    return item.imdbRating;
+  }
+
+  function getRottenTomatoesRating(item) {
+    if (!Array.isArray(item.Ratings)) return "";
+    const rotten = item.Ratings.find(
+      (rating) => rating.Source === "Rotten Tomatoes"
+    );
+    return rotten?.Value || "";
+  }
+
+  function markPosterError(id) {
+    setMovies((prev) =>
+      prev.map((movie) =>
+        movie.id === id ? { ...movie, posterError: true } : movie
+      )
+    );
+  }
+
+  async function updatePriority(id, priority) {
+    const { error } = await supabase
+      .from("movies_2024")
+      .update({ priority })
+      .eq("id", id);
+
+    if (error) return;
+
+    setMovies((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, priority } : m))
+    );
+  }
+
+  async function removeMovie(id) {
+    const { error } = await supabase
+      .from("movies_2024")
+      .delete()
+      .eq("id", id);
+
+    if (error) return;
+
+    setMovies((prev) => prev.filter((m) => m.id !== id));
+  }
+
+  const goToEdit = (id) => {
+    router.push(`/edit-movie/${id}`);
+  };
 
   return (
     <PageWrap>
-      <AiBlock>
-        <AiTitle>AI recommendations</AiTitle>
-        <AiText>
-          Ask for films based on your ratings and taste profile.
-        </AiText>
+      <Header>
+        <TitleWrap>
+          <PageTitle>To Watch</PageTitle>
+          <PageText>8 random unwatched films from your database</PageText>
+        </TitleWrap>
 
-        <AiRow>
-          <AiInput
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Show me melancholic comedies from the 70s that I may like"
-          />
-          <AiButton onClick={handleFindRecommendations} disabled={aiLoading}>
-            {aiLoading ? "Searching..." : "Find"}
-          </AiButton>
-        </AiRow>
+        <Reload onClick={fetchMovies} type="button">
+          <RefreshCcw size={16} />
+          New picks
+        </Reload>
+      </Header>
 
-        {aiError ? <AiError>{aiError}</AiError> : null}
+      {isLoading ? (
+        <Loading />
+      ) : (
+        <Grid>
+          {movies.map((item) => (
+            <Card key={item.id}>
+              <Poster onClick={() => goToEdit(item.id)} title={item.comment || ""}>
+                {item.Poster &&
+                item.Poster !== "N/A" &&
+                !item.posterError ? (
+                  <PosterImage
+                    src={item.Poster}
+                    alt={item.title || "Poster"}
+                    onError={() => markPosterError(item.id)}
+                  />
+                ) : (
+                  <Placeholder>
+                    <Film size={34} />
+                  </Placeholder>
+                )}
+              </Poster>
 
-        {tasteSummary ? (
-          <TasteBox>
-            <strong>Your taste:</strong> {tasteSummary}
-          </TasteBox>
-        ) : null}
+              <Body>
+                <Title onClick={() => goToEdit(item.id)} title={item.comment || ""}>
+                  {item.title} {item.year ? `(${item.year})` : ""}
+                </Title>
 
-        {recommendations.length > 0 ? (
-          <RecoList>
-         {recommendations.map((item, index) => (
-  <RecoCard key={`${item.title}-${index}`}>
-    <RecoTitle>
-      {item.title}
-      {item.year ? ` (${item.year})` : ""}
-    </RecoTitle>
+                <Meta>{item.Director || item.director || "—"}</Meta>
 
-    {item.director ? (
-      <RecoMeta>Director: {item.director}</RecoMeta>
-    ) : null}
+                <BadgesRow>
+                  {getPrimaryGenre(item) && (
+                    <InfoBadge>{getPrimaryGenre(item)}</InfoBadge>
+                  )}
 
-    {item.because_you_like_director ? (
-      <RecoLine>
-        <strong>Director match:</strong> {item.because_you_like_director}
-      </RecoLine>
-    ) : null}
+                  {getImdbRating(item) && (
+                    <InfoBadge>IMDb {getImdbRating(item)}</InfoBadge>
+                  )}
 
-    {item.similar_to?.length ? (
-      <RecoLine>
-        <strong>Closest in your collection:</strong>{" "}
-        {item.similar_to.join(", ")}
-      </RecoLine>
-    ) : null}
+                  {getRottenTomatoesRating(item) && (
+                    <InfoBadge>RT {getRottenTomatoesRating(item)}</InfoBadge>
+                  )}
+                </BadgesRow>
 
-    {item.match_factors?.length ? (
-      <RecoLine>
-        <strong>Why it fits:</strong>{" "}
-        {item.match_factors.join(", ")}
-      </RecoLine>
-    ) : null}
+                <Meta>Added {getDaysAgo(item.watchTime)} days ago</Meta>
 
-    {item.why_this ? <RecoReason>{item.why_this}</RecoReason> : null}
-  </RecoCard>
-))}
-          </RecoList>
-        ) : null}
-      </AiBlock>
+                {isStale(item) && <Stale>Old item</Stale>}
 
-      {isLoading ? <Loading /> : <Table newItems={newItems} />}
+                <PriorityRow>
+                  <Btn
+                    type="button"
+                    $active={item.priority === "high"}
+                    onClick={() => updatePriority(item.id, "high")}
+                    title="High priority"
+                  >
+                    <Flame size={16} />
+                  </Btn>
+
+                  <Btn
+                    type="button"
+                    $active={item.priority === "medium" || !item.priority}
+                    onClick={() => updatePriority(item.id, "medium")}
+                    title="Medium priority"
+                  >
+                    <Star size={16} />
+                  </Btn>
+
+                  <Btn
+                    type="button"
+                    $active={item.priority === "low"}
+                    onClick={() => updatePriority(item.id, "low")}
+                    title="Low priority"
+                  >
+                    <Clock3 size={16} />
+                  </Btn>
+
+                  <RemoveBtn
+                    type="button"
+                    onClick={() => removeMovie(item.id)}
+                    title="Remove movie"
+                  >
+                    <Trash2 size={16} />
+                  </RemoveBtn>
+                </PriorityRow>
+              </Body>
+            </Card>
+          ))}
+        </Grid>
+      )}
     </PageWrap>
   );
 }
 
 const PageWrap = styled.div`
-  padding: 24px;
+  padding: 20px;
 `;
 
-const AiBlock = styled.div`
-  margin-bottom: 28px;
-  padding: 22px;
-  border: 1px solid #e5e7eb;
-  border-radius: 18px;
-  background: #fff;
-  box-shadow: 0 10px 30px rgba(17, 24, 39, 0.05);
-`;
-
-const AiTitle = styled.h2`
-  margin: 0 0 8px;
-  font-size: 1.35rem;
-  color: #111827;
-`;
-
-const AiText = styled.p`
-  margin: 0 0 16px;
-  color: #6b7280;
-`;
-
-const AiRow = styled.div`
+const Header = styled.div`
   display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-`;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
 
-const AiInput = styled.input`
-  flex: 1;
-  min-width: 280px;
-  height: 46px;
-  padding: 0 14px;
-  border: 1px solid #d7dee8;
-  border-radius: 12px;
-  outline: none;
-
-  &:focus {
-    border-color: #b8c7dc;
-    box-shadow: 0 0 0 4px rgba(191, 208, 229, 0.25);
+  @media (max-width: 700px) {
+    flex-direction: column;
   }
 `;
 
-const RecoLine = styled.div`
-  margin-bottom: 8px;
-  color: #475569;
-  line-height: 1.45;
+const TitleWrap = styled.div``;
+
+const PageTitle = styled.h1`
+  margin: 0;
 `;
 
-const AiButton = styled.button`
-  height: 46px;
-  padding: 0 18px;
-  border: 0;
-  border-radius: 12px;
+const PageText = styled.p`
+  color: #6b7280;
+  margin-top: 6px;
+`;
+
+const Reload = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   background: #111827;
-  color: #fff;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+`;
+
+const Grid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+`;
+
+const Card = styled.div`
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  overflow: hidden;
+  background: white;
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.05);
+  }
+`;
+
+const Poster = styled.div`
+  height: 300px;
+  background: #f3f4f6;
+  cursor: pointer;
+`;
+
+const PosterImage = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+`;
+
+const Placeholder = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #9ca3af;
+`;
+
+const Body = styled.div`
+  padding: 12px;
+`;
+
+const Title = styled.div`
   font-weight: 600;
   cursor: pointer;
+  line-height: 1.35;
 
-  &:disabled {
-    opacity: 0.65;
-    cursor: default;
+  &:hover {
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
 `;
 
-const AiError = styled.div`
-  margin-top: 14px;
-  color: #b91c1c;
+const Meta = styled.div`
+  font-size: 0.9rem;
+  color: #6b7280;
+  margin-top: 4px;
 `;
 
-const TasteBox = styled.div`
-  margin-top: 18px;
-  padding: 14px 16px;
-  border-radius: 12px;
+const BadgesRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+`;
+
+const InfoBadge = styled.div`
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 8px;
+  border-radius: 999px;
   background: #f8fafc;
-  color: #334155;
-  line-height: 1.5;
+  border: 1px solid #e5e7eb;
+  color: #475569;
+  font-size: 0.82rem;
+  line-height: 1;
 `;
 
-const RecoList = styled.div`
-  margin-top: 18px;
-  display: grid;
-  gap: 14px;
+const Stale = styled.div`
+  color: #dc2626;
+  margin-top: 6px;
+  font-size: 0.9rem;
 `;
 
-const RecoCard = styled.div`
-  padding: 16px;
-  border: 1px solid #eef2f7;
-  border-radius: 14px;
-  background: #fcfcfd;
+const PriorityRow = styled.div`
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
 `;
 
-const RecoTitle = styled.h3`
-  margin: 0 0 8px;
-  color: #111827;
-  font-size: 1.05rem;
+const Btn = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  background: ${(p) => (p.$active ? "#111827" : "#fff")};
+  color: ${(p) => (p.$active ? "#fff" : "#111827")};
+  cursor: pointer;
 `;
 
-const RecoMeta = styled.div`
-  margin-bottom: 8px;
-  color: #64748b;
-  font-size: 0.95rem;
-`;
+const RemoveBtn = styled(Btn)`
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  color: #dc2626;
+  background: #fff;
 
-const RecoReason = styled.p`
-  margin: 0;
-  color: #374151;
-  line-height: 1.5;
+  &:hover {
+    background: #dc2626;
+    color: #fff;
+    border-color: #dc2626;
+  }
 `;
