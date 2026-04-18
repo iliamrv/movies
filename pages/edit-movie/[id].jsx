@@ -1,9 +1,21 @@
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
-import supabase from "../../src/supabase";
 import styled from "styled-components";
+
 import { Search, Zap, CirclePlus, Trash2, ArrowLeft } from "lucide-react";
 import { Button } from "../../styles/globalStyles";
+
+import {
+  getMovieById,
+  updateMovieById,
+  deleteMovieById,
+} from "../../src/api/movies";
+
+import {
+  fetchOmdbById,
+  searchOmdb,
+  mergeMovieData,
+} from "../../src/api/omdb";
 
 const Container = styled.div`
   display: flex;
@@ -110,70 +122,51 @@ export default function EditMovie() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (id) fetchMovieFromDb(id);
+    if (id) fetchMovie(id);
   }, [id]);
 
-  const fetchMovieFromDb = async (movieId) => {
-    const { data, error } = await supabase
-      .from("movies_2024")
-      .select("*")
-      .eq("id", movieId)
-      .single();
+  const fetchMovie = async (movieId) => {
+    const { data, error } = await getMovieById(movieId);
 
     if (error) {
-      setError("Failed to load movie from database");
+      setError("Failed to load movie");
       return;
     }
 
-    if (data) {
-      setMovieData({
-        title: data.title || "",
-        imdb: data.imdb || "",
-        director: data.director || "",
-        year: data.year || "",
-        personalRating: data.rating || "",
-        comment: data.comment || "",
-        watchTime: data.watchTime || currentDay,
-      });
-    }
+    setMovieData({
+      title: data.title || "",
+      imdb: data.imdb || "",
+      director: data.director || "",
+      year: data.year || "",
+      personalRating: data.rating || "",
+      comment: data.comment || "",
+      watchTime: data.watchTime || currentDay,
+    });
   };
 
-  const fetchMovieDataFromImdb = async (imdbID) => {
-    if (!imdbID) {
-      setError("IMDb ID is empty");
+  const handleFetchFromImdb = async () => {
+    if (!movieData.imdb) return;
+
+    const imdbData = await fetchOmdbById(movieData.imdb);
+
+    if (!imdbData) {
+      setError("Failed to fetch from IMDb");
       return;
     }
 
-    setError("");
+    const merged = mergeMovieData(movieData, imdbData);
 
-    try {
-      const res = await fetch(
-        `https://www.omdbapi.com/?i=${encodeURIComponent(imdbID)}&apikey=8aab931f`
-      );
-      const data = await res.json();
-
-      if (data.Response === "True") {
-        setMovieData((prev) => ({
-          ...prev,
-          imdb: imdbID,
-          title: data.Title || prev.title,
-          year:
-            data.Year && /^\d{4}$/.test(data.Year)
-              ? Number(data.Year)
-              : prev.year,
-          director: data.Director || prev.director,
-        }));
-      } else {
-        setError(data.Error || "Failed to fetch movie details");
-      }
-    } catch (e) {
-      setError("Fetch failed");
-    }
+    setMovieData({
+      ...movieData,
+      title: merged.title,
+      year: merged.year,
+      director: merged.director,
+    });
   };
 
-  const searchImdb = async () => {
+  const handleSearch = async () => {
     if (!movieData.title.trim()) {
-      setError("Enter a title first");
+      setError("Enter title");
       return;
     }
 
@@ -181,57 +174,37 @@ export default function EditMovie() {
     setSearchResults([]);
     setError("");
 
-    const cleanTitle = movieData.title.trim();
-    const cleanYear = String(movieData.year || "").trim();
+    const results = await searchOmdb(movieData.title, movieData.year);
 
-    try {
-      const exactUrl = cleanYear
-        ? `https://www.omdbapi.com/?t=${encodeURIComponent(cleanTitle)}&y=${encodeURIComponent(cleanYear)}&apikey=8aab931f`
-        : `https://www.omdbapi.com/?t=${encodeURIComponent(cleanTitle)}&apikey=8aab931f`;
-
-      const exactRes = await fetch(exactUrl);
-      const exactData = await exactRes.json();
-
-      if (exactData.Response === "True") {
-        setSearchResults([
-          {
-            imdbID: exactData.imdbID,
-            Title: exactData.Title,
-            Year: exactData.Year,
-            Type: exactData.Type,
-          },
-        ]);
-        setIsSearching(false);
-        return;
-      }
-
-      const listQuery = cleanYear ? `${cleanTitle} ${cleanYear}` : cleanTitle;
-
-      const listRes = await fetch(
-        `https://www.omdbapi.com/?s=${encodeURIComponent(listQuery)}&apikey=8aab931f`
-      );
-      const listData = await listRes.json();
-
-      if (listData.Response === "True" && Array.isArray(listData.Search)) {
-        setSearchResults(listData.Search);
-      } else {
-        setError(listData.Error || exactData.Error || "Nothing found");
-      }
-    } catch (e) {
-      setError("Search failed");
-    }
-
+    setSearchResults(results);
     setIsSearching(false);
   };
 
-  const selectImdb = async (item) => {
-    await fetchMovieDataFromImdb(item.imdbID);
+  const handleSelect = async (item) => {
+    setMovieData((prev) => ({
+      ...prev,
+      imdb: item.imdbID,
+    }));
+
+    const imdbData = await fetchOmdbById(item.imdbID);
+
+    if (!imdbData) return;
+
+    const merged = mergeMovieData(movieData, imdbData);
+
+    setMovieData({
+      ...movieData,
+      imdb: item.imdbID,
+      title: merged.title,
+      year: merged.year,
+      director: merged.director,
+    });
+
     setSearchResults([]);
   };
 
   const handleUpdate = async (e) => {
     e.preventDefault();
-    setError("");
     setIsLoading(true);
 
     const payload = {
@@ -246,10 +219,7 @@ export default function EditMovie() {
       watchTime: movieData.watchTime || null,
     };
 
-    const { error } = await supabase
-      .from("movies_2024")
-      .update(payload)
-      .eq("id", id);
+    const { error } = await updateMovieById(id, payload);
 
     setIsLoading(false);
 
@@ -262,18 +232,12 @@ export default function EditMovie() {
   };
 
   const handleDelete = async () => {
-    if (!id) return;
-
     const confirmed = window.confirm("Delete this movie?");
     if (!confirmed) return;
 
-    setError("");
     setIsDeleting(true);
 
-    const { error } = await supabase
-      .from("movies_2024")
-      .delete()
-      .eq("id", id);
+    const { error } = await deleteMovieById(id);
 
     setIsDeleting(false);
 
@@ -302,17 +266,12 @@ export default function EditMovie() {
 
         <ActionBlock>
           {movieData.imdb ? (
-            <Button
-              type="button"
-              onClick={() => fetchMovieDataFromImdb(movieData.imdb)}
-            >
-              <Zap size={16} style={{ marginRight: 6 }} />
-              Fetch Movie Data
+            <Button type="button" onClick={handleFetchFromImdb}>
+              <Zap size={16} /> Fetch Movie Data
             </Button>
           ) : (
-            <Button type="button" onClick={searchImdb}>
-              <Search size={16} style={{ marginRight: 6 }} />
-              Find IMDb
+            <Button type="button" onClick={handleSearch}>
+              <Search size={16} /> Find IMDb
             </Button>
           )}
         </ActionBlock>
@@ -325,7 +284,7 @@ export default function EditMovie() {
             {searchResults.map((item) => (
               <ResultItem
                 key={item.imdbID}
-                onClick={() => selectImdb(item)}
+                onClick={() => handleSelect(item)}
               >
                 {item.Title} ({item.Year})
               </ResultItem>
@@ -334,7 +293,7 @@ export default function EditMovie() {
         )}
 
         <InputGroup>
-          <Label>IMDb ID</Label>
+          <Label>IMDb</Label>
           <Input
             value={movieData.imdb}
             onChange={(e) =>
@@ -369,10 +328,7 @@ export default function EditMovie() {
             type="date"
             value={movieData.watchTime}
             onChange={(e) =>
-              setMovieData({
-                ...movieData,
-                watchTime: e.target.value,
-              })
+              setMovieData({ ...movieData, watchTime: e.target.value })
             }
           />
         </InputGroup>
@@ -382,28 +338,23 @@ export default function EditMovie() {
           <TextArea
             value={movieData.comment}
             onChange={(e) =>
-              setMovieData({
-                ...movieData,
-                comment: e.target.value,
-              })
+              setMovieData({ ...movieData, comment: e.target.value })
             }
           />
         </InputGroup>
 
         <BottomButtons>
           <Button type="submit" disabled={isLoading}>
-            <CirclePlus size={16} style={{ marginRight: 6 }} />
+            <CirclePlus size={16} />
             {isLoading ? "Updating..." : "Update"}
           </Button>
 
-          <Button type="button" onClick={handleDelete} disabled={isDeleting}>
-            <Trash2 size={16} style={{ marginRight: 6 }} />
-            {isDeleting ? "Deleting..." : "Delete"}
+          <Button type="button" onClick={handleDelete}>
+            <Trash2 size={16} /> Delete
           </Button>
 
           <Button type="button" onClick={() => router.back()}>
-            <ArrowLeft size={16} style={{ marginRight: 6 }} />
-            Go Back
+            <ArrowLeft size={16} /> Back
           </Button>
         </BottomButtons>
       </Form>

@@ -1,11 +1,12 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import supabase from "../../src/supabase";
 import Image from "next/image";
 import styled from "styled-components";
 
 import { Edit3, Trash2, ArrowLeft, Film } from "lucide-react";
 import { StyledButtons, Button } from "../../styles/globalStyles";
+import { getMovieById, deleteMovieById } from "../../src/api/movies";
+import { fetchOmdbById, mergeMovieData } from "../../src/api/omdb";
 
 export default function MovieDetails() {
   const router = useRouter();
@@ -22,10 +23,7 @@ export default function MovieDetails() {
   const handleDelete = async (e) => {
     e.preventDefault();
 
-    const { error } = await supabase
-      .from("movies_2024")
-      .delete()
-      .eq("id", id);
+    const { error } = await deleteMovieById(id);
 
     if (error) {
       setError("Delete failed");
@@ -50,30 +48,23 @@ export default function MovieDetails() {
     fetchMovie(id);
   }, [id]);
 
-  const fetchMovie = async (id) => {
+  const fetchMovie = async (movieId) => {
     setIsLoading(true);
+    setError("");
 
     try {
-      let { data, error } = await supabase
-        .from("movies_2024")
-        .select("*")
-        .eq("id", id)
-        .single();
+      const { data, error } = await getMovieById(movieId);
 
       if (error) throw error;
 
-      setMovie(data);
+      let finalMovie = data;
 
-      if (data.imdb) {
-        const response = await fetch(
-          `https://www.omdbapi.com/?i=${data.imdb}&apikey=8aab931f`
-        );
-        const imdbData = await response.json();
-
-        if (imdbData.Response === "True") {
-          setMovie((prev) => ({ ...prev, ...imdbData }));
-        }
+      if (data?.imdb) {
+        const imdbData = await fetchOmdbById(data.imdb);
+        finalMovie = mergeMovieData(data, imdbData);
       }
+
+      setMovie(finalMovie);
     } catch (err) {
       setError("Failed to fetch movie details: " + err.message);
     }
@@ -106,35 +97,13 @@ export default function MovieDetails() {
             <PosterColumn>
               {movie.Poster && movie.Poster !== "N/A" ? (
                 <PosterFrame>
-                  {/* <Image
+                  <Image
                     src={movie.Poster}
                     alt={movie.title || "Movie poster"}
                     fill
                     sizes="(max-width: 768px) 100vw, 280px"
                     style={{ objectFit: "cover" }}
-                  /> */}
-
-                  <img
-  src={movie.Poster}
-  alt={movie.title || "Movie poster"}
-  style={{
-    width: "100%",
-    height: "100%",
-    objectFit: "cover",
-  }}
-  onError={(e) => {
-    console.log("❌ Poster failed:", {
-      title: movie.title,
-      imdb: movie.imdb,
-      poster: movie.Poster,
-    });
-    e.target.style.display = "none";
-  }}
-  onLoad={() => {
-    console.log("✅ Poster loaded:", movie.title);
-  }}
-/>
-
+                  />
                 </PosterFrame>
               ) : (
                 <PosterPlaceholder>
@@ -150,8 +119,6 @@ export default function MovieDetails() {
                   <MetaLabel>Director</MetaLabel>
                   <MetaValue>{movie.director || "—"}</MetaValue>
                 </MetaCard>
-
-           
 
                 <MetaCard>
                   <MetaLabel>Year</MetaLabel>
@@ -171,6 +138,11 @@ export default function MovieDetails() {
                 <MetaCard>
                   <MetaLabel>Watch Time</MetaLabel>
                   <MetaValue>{movie.watchTime || "n/a"}</MetaValue>
+                </MetaCard>
+
+                <MetaCard>
+                  <MetaLabel>IMDb ID</MetaLabel>
+                  <MetaValue>{movie.imdb || "—"}</MetaValue>
                 </MetaCard>
               </MetaGrid>
             </InfoColumn>
@@ -212,21 +184,21 @@ export default function MovieDetails() {
             )}
           </Section>
 
-         <Section>
-  <StyledButtons>
-    <Button onClick={handleEdit}>
-      <Edit3 size={16} /> Edit
-    </Button>
+          <Section>
+            <StyledButtons>
+              <Button onClick={handleEdit} type="button">
+                <Edit3 size={16} /> Edit
+              </Button>
 
-    <Button onClick={handleDelete}>
-      <Trash2 size={16} /> Delete
-    </Button>
+              <Button onClick={handleDelete} type="button">
+                <Trash2 size={16} /> Delete
+              </Button>
 
-    <Button onClick={() => router.back()}>
-      <ArrowLeft size={16} /> Go Back
-    </Button>
-  </StyledButtons>
-</Section>
+              <Button type="button" onClick={() => router.back()}>
+                <ArrowLeft size={16} /> Go Back
+              </Button>
+            </StyledButtons>
+          </Section>
         </ContentCard>
       ) : (
         <StateText>Movie not found.</StateText>
