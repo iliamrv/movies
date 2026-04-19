@@ -2,6 +2,15 @@ import supabase from "../supabase";
 
 const TABLE_NAME = "movies_2024";
 
+export async function getWatchedMovies(limit = 20) {
+	return supabase
+		.from(TABLE_NAME)
+		.select("*")
+		.eq("watched_mark", true)
+		.order("watchTime", { ascending: false, nullsFirst: false })
+		.limit(limit);
+}
+
 export async function getMovieById(id) {
 	return supabase
 		.from(TABLE_NAME)

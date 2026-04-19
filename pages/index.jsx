@@ -1,51 +1,182 @@
-import { useState, useEffect } from "react";
-import supabase from "../src/supabase";
-import Table from "../components/Table";
+import { useEffect, useState } from "react";
+import styled from "styled-components";
+import { RefreshCcw, Table2 } from "lucide-react";
+import { useRouter } from "next/router";
+
 import Loading from "./loading";
-// import styled from "styled-components";
+import MovieCard from "../components/MovieCard";
+import { Button } from "../styles/globalStyles";
+
+import {
+  deleteMovieById,
+  updateMoviePriority,
+  getWatchedMovies,
+} from "../src/api/movies";
+import { fetchOmdbById, mergeMovieData } from "../src/api/omdb";
 
 export default function Page() {
-  const db_name = `movies_2024`;
-  const [isLoading, setIsLoading] = useState(false);
-  const [newItems, setNewItems] = useState([]);
-  // const [orderBy, setOrderBy] = useState("id");
-  // const [isActive, setIsActive] = useState(false);
+  const router = useRouter();
 
-  useEffect(function () {
-    async function getLPitems() {
-      setIsLoading(true);
-      const { data: movies, error } = await supabase
-        .from(db_name)
-        .select("*")
-        .eq("watched_mark", true)
-        .order("watchTime", { ascending: false });
-      // .limit(1115);
-      setNewItems(movies);
-      setIsLoading(false);
-    }
-    getLPitems();
+  const [isLoading, setIsLoading] = useState(false);
+  const [movies, setMovies] = useState([]);
+
+  useEffect(() => {
+    fetchMovies();
   }, []);
 
-  // function resetFields(e) {
-  //   setFilters("");
-  //   e.target.value = "";
-  // }
+  const fetchMovies = async () => {
+    setIsLoading(true);
 
+    const { data, error } = await getWatchedMovies(20);
 
-  return <>
+    if (!error && data) {
+      const enriched = await Promise.all(
+        data.map(async (movie) => {
+          if (!movie.imdb) {
+            return { ...movie, posterError: false };
+          }
 
+          const imdbData = await fetchOmdbById(movie.imdb);
+          const merged = mergeMovieData(movie, imdbData);
 
+          return {
+            ...merged,
+            posterError: false,
+          };
+        })
+      );
 
+      setMovies(enriched);
+    }
 
+    setIsLoading(false);
+  };
 
+  function markPosterError(id) {
+    setMovies((prev) =>
+      prev.map((movie) =>
+        movie.id === id ? { ...movie, posterError: true } : movie
+      )
+    );
+  }
 
+  async function handleUpdatePriority(id, priority) {
+    const { error } = await updateMoviePriority(id, priority);
 
+    if (error) return;
 
+    setMovies((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, priority } : m))
+    );
+  }
 
+  async function handleRemoveMovie(id) {
+    const { error } = await deleteMovieById(id);
 
-    {isLoading ? <Loading /> : <Table newItems={newItems} />}</>;
+    if (error) return;
+
+    setMovies((prev) => prev.filter((m) => m.id !== id));
+  }
+
+  const goToMovie = (id) => {
+    router.push(`/movies/${id}`);
+  };
+
+  return (
+    <PageWrap>
+      <Header>
+        <TitleWrap>
+          <PageTitle>Watched Movies</PageTitle>
+          <PageText>Last 20 watched movies in card view</PageText>
+        </TitleWrap>
+
+        <Controls>
+          <Button type="button" onClick={() => router.push("/library")}>
+            <Table2 size={16} />
+            Open full library
+          </Button>
+
+          <Reload onClick={fetchMovies} type="button">
+            <RefreshCcw size={16} />
+            Reload
+          </Reload>
+        </Controls>
+      </Header>
+
+      {isLoading ? (
+        <Loading />
+      ) : (
+        <Grid>
+          {movies.map((item) => (
+            <MovieCard
+              key={item.id}
+              item={{
+                ...item,
+                onPosterError: () => markPosterError(item.id),
+              }}
+              onEdit={() => goToMovie(item.id)}
+              onRemove={() => handleRemoveMovie(item.id)}
+              onPriorityChange={(priority) =>
+                handleUpdatePriority(item.id, priority)
+              }
+            />
+          ))}
+        </Grid>
+      )}
+    </PageWrap>
+  );
 }
 
+const PageWrap = styled.div`
+  padding: 20px;
+`;
 
+const Header = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
 
+  @media (max-width: 700px) {
+    flex-direction: column;
+  }
+`;
 
+const TitleWrap = styled.div``;
+
+const PageTitle = styled.h1`
+  margin: 0;
+`;
+
+const PageText = styled.p`
+  color: #6b7280;
+  margin-top: 6px;
+`;
+
+const Controls = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+`;
+
+const Reload = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #111827;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+`;
+
+const Grid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+`;

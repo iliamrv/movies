@@ -1,157 +1,233 @@
-import { useState } from "react";
-
-import Link from "next/link";
-import { FilterMatchMode } from "primereact/api";
-//theme
-// import "primereact/resources/themes/lara-light-indigo/theme.css";
+import { useMemo, useState } from "react";
 import styled from "styled-components";
+import { useRouter } from "next/router";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
-//core
-import "primereact/resources/primereact.min.css";
+const PAGE_SIZE = 25;
 
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
+export default function Table({ newItems = [] }) {
+  const router = useRouter();
 
+  const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState("watchTime");
+  const [sortDirection, setSortDirection] = useState("desc");
+  const [page, setPage] = useState(1);
 
-function Table({ newItems }) {
-  const [searchValue, setSearchValue] = useState("");
+  function handleSort(key) {
+    setPage(1);
 
+    if (sortKey === key) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
 
-  const [filters, setFilters] = useState({
-    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-    status: { value: null, matchMode: FilterMatchMode.EQUALS },
-  });
-
-
-  function resetFields() {
-    setSearchValue("");
-    setFilters((prev) => ({
-      ...prev,
-      global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-    }));
+    setSortKey(key);
+    setSortDirection("asc");
   }
 
+  function getSortIndicator(key) {
+    if (sortKey !== key) return "⇅";
+    return sortDirection === "asc" ? "↑" : "↓";
+  }
 
-  const linkTitle = (newItems) => {
-    return (
-      <Link
-        className=" no-underline dark:text-blue-500 hover:underline"
-        href={"/movies/" + newItems.id}
-      >
-        {newItems.title}
-      </Link>
-    );
-  };
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase();
 
+    let items = !query
+      ? [...newItems]
+      : newItems.filter((item) => {
+        const title = String(item.title || "").toLowerCase();
+        const director = String(item.director || "").toLowerCase();
+        const year = String(item.year || "").toLowerCase();
 
-  const viewsTemplate = (rowData) => {
-    const count = Array.isArray(rowData.watch_dates) ? rowData.watch_dates.length : 0;
+        return (
+          title.includes(query) ||
+          director.includes(query) ||
+          year.includes(query)
+        );
+      });
 
-    return <span className="views-badge">{count}</span>;
-  };
+    items.sort((a, b) => {
+      let aValue = a?.[sortKey];
+      let bValue = b?.[sortKey];
 
-  const ratingTemplate = (newItems) => {
+      if (sortKey === "title" || sortKey === "director") {
+        aValue = String(aValue || "").toLowerCase();
+        bValue = String(bValue || "").toLowerCase();
+      }
 
-    return (
+      if (sortKey === "year" || sortKey === "rating") {
+        aValue =
+          aValue === null || aValue === undefined || aValue === ""
+            ? -Infinity
+            : Number(aValue);
+        bValue =
+          bValue === null || bValue === undefined || bValue === ""
+            ? -Infinity
+            : Number(bValue);
+      }
 
-      <div className="rating">
+      if (sortKey === "watchTime") {
+        aValue = aValue ? new Date(aValue).getTime() : -Infinity;
+        bValue = bValue ? new Date(bValue).getTime() : -Infinity;
+      }
 
-        <span
-          className={
+      if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
 
-            (newItems.rating ? ` rating-${newItems.rating}` : "rating-na")
-          }
-        >
-          {newItems.rating ? newItems.rating : " "}
-        </span></div>
-    );
-  };
+    return items;
+  }, [newItems, search, sortKey, sortDirection]);
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
 
+  const paginated = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const end = start + PAGE_SIZE;
+    return filtered.slice(start, end);
+  }, [filtered, currentPage]);
+
+  function renderRating(value) {
+    if (value === null || value === undefined || value === "") {
+      return <MutedPill>—</MutedPill>;
+    }
+
+    const rating = Number(value);
+
+    if (Number.isNaN(rating)) {
+      return <MutedPill>{String(value)}</MutedPill>;
+    }
+
+    if (rating >= 8) {
+      return <RatingPill $tone="good">{rating}</RatingPill>;
+    }
+
+    if (rating <= 4) {
+      return <RatingPill $tone="bad">{rating}</RatingPill>;
+    }
+
+    return <RatingPill $tone="neutral">{rating}</RatingPill>;
+  }
+
+  function openMovie(id) {
+    router.push(`/movies/${id}`);
+  }
+
+  function handleSearchChange(e) {
+    setSearch(e.target.value);
+    setPage(1);
+  }
 
   return (
-    <div>
+    <Wrapper>
+      <TopBar>
+        <SearchInput
+          placeholder="Search by title, director, year..."
+          value={search}
+          onChange={handleSearchChange}
+        />
 
+        <ResultCount>
+          {filtered.length} {filtered.length === 1 ? "movie" : "movies"}
+        </ResultCount>
+      </TopBar>
 
+      <TableContainer>
+        <TableWrap>
+          <thead>
+            <tr>
+              <SortableTh onClick={() => handleSort("title")}>
+                Title <SortMark>{getSortIndicator("title")}</SortMark>
+              </SortableTh>
 
+              <SortableTh onClick={() => handleSort("director")}>
+                Director <SortMark>{getSortIndicator("director")}</SortMark>
+              </SortableTh>
 
+              <SortableTh onClick={() => handleSort("year")}>
+                Year <SortMark>{getSortIndicator("year")}</SortMark>
+              </SortableTh>
 
-      <StyledSearch
-        type="text"
-        placeholder="Search in collection..."
-        value={searchValue}
-        onFocus={resetFields}
-        onChange={(e) => {
-          const value = e.target.value;
-          setSearchValue(value);
-          setFilters({
-            global: {
-              value,
-              matchMode: FilterMatchMode.CONTAINS,
-            },
-          });
-        }}
-      />
+              <SortableTh onClick={() => handleSort("rating")}>
+                Rating <SortMark>{getSortIndicator("rating")}</SortMark>
+              </SortableTh>
 
+              <SortableTh onClick={() => handleSort("watchTime")}>
+                Watch Time <SortMark>{getSortIndicator("watchTime")}</SortMark>
+              </SortableTh>
+            </tr>
+          </thead>
 
+          <tbody>
+            {paginated.map((item) => (
+              <TableRow key={item.id} onClick={() => openMovie(item.id)}>
+                <TitleCell>{item.title || "—"}</TitleCell>
+                <td>{item.director || "—"}</td>
+                <td>{item.year || "—"}</td>
+                <td>{renderRating(item.rating)}</td>
+                <td>{item.watchTime || "—"}</td>
+              </TableRow>
+            ))}
+          </tbody>
+        </TableWrap>
+      </TableContainer>
 
+      <PaginationBar>
+        <PageInfo>
+          Page {currentPage} of {totalPages}
+        </PageInfo>
 
-      <StyledTable>
+        <PaginationControls>
+          <PageButton
+            type="button"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft size={16} />
+            Prev
+          </PageButton>
 
-        <DataTable
-          stripedRows
-          value={newItems}
-          filterDisplay="row"
-          paginator
-          paginatorTemplate="  PrevPageLink CurrentPageReport NextPageLink "
-          rows={30}
-          // rowsPerPageOptions={[1, 2, 3]}
-          // totalRecords={3}
-          filters={filters}
-        >
-          {/* <Column field="id" header="ID" /> */}
-
-          <Column field="title" header="title" body={linkTitle} sortable />
-          <Column field="director" header="director" sortable />
-          <Column field="year" header="year" sortable />
-          <Column
-            field="rating"
-            body={ratingTemplate}
-
-            header="rating"
-            sortable
-          />
-          {/* <Column header="Views" body={viewsTemplate} sortable /> */}
-          <Column field="watchTime" header="watched" sortable />
-          {/* <Column field="imdb" header="imdb" body={imdb} sortable /> */}
-        </DataTable>
-      </StyledTable>
-
-
-    </div>
+          <PageButton
+            type="button"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+          >
+            Next
+            <ChevronRight size={16} />
+          </PageButton>
+        </PaginationControls>
+      </PaginationBar>
+    </Wrapper>
   );
 }
 
-export default Table;
-
-
-
-export const StyledSearch = styled.input`
+const Wrapper = styled.div`
   width: 100%;
-  max-width: 340px;
-  height: 44px;
-  padding: 0 14px;
-  margin-bottom: 24px;
-  border: 1px solid #d7dee8;
-  border-radius: 12px;
-  background: #ffffff;
-  color: #111827;
-  outline: none;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+`;
 
-  &::placeholder {
-    color: #94a3b8;
+const TopBar = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+
+  @media (max-width: 700px) {
+    flex-direction: column;
+    align-items: stretch;
   }
+`;
+
+const SearchInput = styled.input`
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #d7dee8;
+  background: #fff;
+  font-size: 14px;
+  outline: none;
 
   &:focus {
     border-color: #b8c7dc;
@@ -159,191 +235,155 @@ export const StyledSearch = styled.input`
   }
 `;
 
-export const StyledTable = styled.div`
-  .table-card {
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 20px;
-    padding: 22px;
-    box-shadow: 0 10px 30px rgba(17, 24, 39, 0.05);
+const ResultCount = styled.div`
+  white-space: nowrap;
+  color: #64748b;
+  font-size: 14px;
+`;
+
+const TableContainer = styled.div`
+  width: 100%;
+  max-height: 70vh;
+  overflow: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fff;
+`;
+
+const TableWrap = styled.table`
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+
+  thead {
+    background: #f9fafb;
   }
 
-  
-  .table-top {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 18px;
-    margin-bottom: 24px;
-    flex-wrap: wrap;
+  th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #f9fafb;
   }
 
-  .table-title {
-    margin: 0 0 4px;
-    font-size: 1.5rem;
-    line-height: 1.1;
-    color: #111827;
-  }
-
-  .table-subtitle {
-    margin: 0;
-    color: #6b7280;
-    font-size: 0.95rem;
-  }
-
-  table {
-    font-size: 0.95rem;
-  }
-
-  tbody tr {
-    transition: background-color 0.18s ease;
-  }
-
-  tbody tr:hover {
-    background: #fafbfc;
-  }
-
-  tbody tr:hover .rating span {
-    transform: translateY(-1px);
-  }
-
-  tr.p-row-odd {
-    background: #fcfcfd;
-  }
-
-  .p-datatable-wrapper {
-    border: 1px solid #eef2f7;
-    border-radius: 14px;
-    overflow: hidden;
-  }
-
-  .p-datatable-table th {
-    background: #f8fafc;
-    color: #64748b;
+  td {
     padding: 14px 12px;
-    font-size: 0.84rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    border-bottom: 1px solid #e9eef5;
+    font-size: 14px;
+    color: #0f172a;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
   }
 
-  .p-datatable-table td {
-    padding: 14px 12px;
-    border-top: 1px solid #f3f4f6;
-    color: #1f2937;
+  tbody tr:last-child td {
+    border-bottom: none;
   }
+`;
 
-  td:first-child {
-    width: 35%;
-  }
+const SortableTh = styled.th`
+  text-align: left;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  padding: 14px 12px;
+  border-bottom: 1px solid #e5e7eb;
+  text-transform: uppercase;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
 
-  td:nth-child(2) {
-    width: 35%;
-  }
-
-  td:nth-child(3) {
-    width: 10%;
-  }
-
-  td:nth-child(4) {
-    width: 5%;
-  }
-
-  .p-paginator {
-    background: transparent;
-    border: 0;
-    padding: 16px 0 0;
-  }
-
-  .p-paginator .p-paginator-page,
-  .p-paginator .p-paginator-first,
-  .p-paginator .p-paginator-prev,
-  .p-paginator .p-paginator-next,
-  .p-paginator .p-paginator-last {
-    border-radius: 10px;
-  }
-
-  .p-paginator .p-paginator-pages .p-paginator-page.p-highlight {
-    background: #eef4ff;
-    color: #1d4ed8;
-    font-weight: 700;
-  }
-
-  .rating {
-    text-align: center;
-  }
-
-  .rating span {
-    display: inline-block;
-    min-width: 34px;
-    padding: 4px 10px;
-    border-radius: 999px;
-    text-align: center;
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: #111827;
-    transition: transform 0.18s ease, box-shadow 0.18s ease;
-  }
-
-  .rating-na {
+  &:hover {
     background: #f3f4f6;
-    color: #6b7280;
   }
+`;
 
-  .rating-2 {
-    background-color: #fee2e2;
+const SortMark = styled.span`
+  margin-left: 6px;
+  color: #94a3b8;
+`;
+
+const TableRow = styled.tr`
+  cursor: pointer;
+
+  &:hover {
+    background: #fafafa;
   }
+`;
 
-  .rating-3 {
-    background-color: #fecaca;
-  }
+const TitleCell = styled.td`
+  font-weight: 500;
+  max-width: 320px;
+  word-break: break-word;
+`;
 
-  .rating-4 {
-    background-color: #fbcaca;
-  }
-
-  .rating-5 {
-    background-color: #e5f4ea;
-  }
-
-  .rating-6 {
-    background-color: #d9efe2;
-  }
-
-  .rating-7 {
-    background-color: #caead8;
-  }
-
-  .rating-8 {
-    background-color: #bae3cd;
-  }
-
-  .rating-9 {
-    background-color: #a8dcc1;
-  }
-
-  .rating-10 {
-    background-color: #95d3b3;
-  }
-
-  .rating-8,
-  .rating-9,
-  .rating-10 {
-    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.12);
-  }
-
-  .views-badge {
+const BasePill = styled.span`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 28px;
-  padding: 4px 8px;
+  min-width: 34px;
+  min-height: 28px;
+  padding: 0 10px;
   border-radius: 999px;
-  background: #eef4ff;
-  color: #1d4ed8;
-  font-size: 0.8rem;
-  font-weight: 600;
-}
+  font-size: 13px;
+  font-weight: 700;
+`;
 
+const RatingPill = styled(BasePill)`
+  background: ${({ $tone }) => {
+    if ($tone === "good") return "#b7e4c7";
+    if ($tone === "bad") return "#f6c1c1";
+    return "#e5e7eb";
+  }};
+  color: ${({ $tone }) => {
+    if ($tone === "good") return "#083344";
+    if ($tone === "bad") return "#7f1d1d";
+    return "#334155";
+  }};
+`;
+
+const MutedPill = styled(BasePill)`
+  background: #f1f5f9;
+  color: #94a3b8;
+  font-weight: 600;
+`;
+
+const PaginationBar = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+
+  @media (max-width: 700px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+`;
+
+const PageInfo = styled.div`
+  color: #64748b;
+  font-size: 14px;
+`;
+
+const PaginationControls = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+
+const PageButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #d7dee8;
+  background: #fff;
+  color: #111827;
+  cursor: pointer;
+  font-size: 14px;
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
 `;
