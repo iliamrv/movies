@@ -1,5 +1,5 @@
 import { useRouter } from "next/router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import styled from "styled-components";
 
 import { Search, Zap, CirclePlus, Trash2, ArrowLeft } from "lucide-react";
@@ -100,20 +100,17 @@ export default function EditMovie() {
   const router = useRouter();
   const { id } = router.query;
 
-  const currentDay = useMemo(
-    () => new Date().toISOString().slice(0, 10),
-    []
-  );
 
-  const [movieData, setMovieData] = useState({
-    title: "",
-    imdb: "",
-    director: "",
-    year: "",
-    personalRating: "",
-    comment: "",
-    watchTime: currentDay,
-  });
+
+const [movieData, setMovieData] = useState({
+  title: "",
+  imdb: "",
+  director: "",
+  year: "",
+  personalRating: "",
+  comment: "",
+  watchTime: "",
+});
 
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -133,15 +130,15 @@ export default function EditMovie() {
       return;
     }
 
-    setMovieData({
-      title: data.title || "",
-      imdb: data.imdb || "",
-      director: data.director || "",
-      year: data.year || "",
-      personalRating: data.rating || "",
-      comment: data.comment || "",
-      watchTime: data.watchTime || currentDay,
-    });
+ setMovieData({
+  title: data.title || "",
+  imdb: data.imdb || "",
+  director: data.director || "",
+  year: data.year || "",
+  personalRating: data.rating || "",
+  comment: data.comment || "",
+  watchTime: data.watchTime || "", // ✅ тут ок
+});
   };
 
   const handleFetchFromImdb = async () => {

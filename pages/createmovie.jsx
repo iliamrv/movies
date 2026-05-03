@@ -1,94 +1,162 @@
-import { useState } from 'react';
-import supabase from '../src/supabase'; 
-import styled from 'styled-components';
+import { useState } from "react";
+import supabase from "../src/supabase";
+import styled from "styled-components";
 import { Button } from "../styles/globalStyles";
-import { CirclePlus } from 'lucide-react';
-import { useRouter } from 'next/router'; 
+import { CirclePlus } from "lucide-react";
+import { useRouter } from "next/router";
 
 export default function CreateMovie() {
-  const router = useRouter(); // Use useRouter hook for redirection
-  const [imdbID, setImdbID] = useState('');
+  const router = useRouter();
+
+  const [imdbID, setImdbID] = useState("");
+
   const [movieData, setMovieData] = useState({
-    title: '',
-    director: '',
-    year: '',
-    personalRating: '',
-    comment: '',
-    watchTime: new Date().toISOString().slice(0, 10)
+    title: "",
+    director: "",
+    year: "",
+    personalRating: "",
+    comment: "",
+    watchTime: new Date().toISOString().slice(0, 10),
   });
+
   const [extraDetails, setExtraDetails] = useState({
-    runtime: '',
-    genre: '',
-    ratings: []
+    runtime: "",
+    genre: "",
+    ratings: [],
   });
-  const [poster, setPoster] = useState('');
+
+  const [poster, setPoster] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [successMessage, setSuccessMessage] = useState(''); // State for success message
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const [tmdbMessage, setTmdbMessage] = useState("");
 
   const fetchMovieData = async () => {
     setIsLoading(true);
-    setError('');
+    setError("");
+    setSuccessMessage("");
+    setTmdbMessage("");
+
     try {
-      const response = await fetch(`https://www.omdbapi.com/?i=${imdbID}&apikey=8aab931f`);
+      const response = await fetch(
+        `https://www.omdbapi.com/?i=${imdbID.trim()}&apikey=8aab931f`
+      );
+
       const data = await response.json();
+
       if (data.Response === "True") {
         setMovieData({
-          title: data.Title,
-          director: data.Director,
-          year: data.Year,
-          personalRating: '',
-          comment: '',
-          watchTime: movieData.watchTime || new Date().toISOString().slice(0, 10)
+          title: data.Title || "",
+          director: data.Director || "",
+          year: data.Year || "",
+          personalRating: "",
+          comment: "",
+          watchTime:
+            movieData.watchTime || new Date().toISOString().slice(0, 10),
         });
+
         setExtraDetails({
-          runtime: data.Runtime,
-          genre: data.Genre,
-          ratings: data.Ratings
+          runtime: data.Runtime || "",
+          genre: data.Genre || "",
+          ratings: data.Ratings || [],
         });
-        setPoster(data.Poster);
+
+        setPoster(data.Poster || "");
       } else {
-        setError(data.Error);
+        setError(data.Error || "Movie not found");
       }
     } catch (err) {
-      setError('Failed to fetch movie details');
+      setError("Failed to fetch movie details");
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleSave = async () => {
-    let movieEntry = {
-        title: movieData.title,
-        director: movieData.director,
-        year: movieData.year,
-        watchTime: movieData.watchTime,
-        imdb: imdbID,
-        comment: movieData.comment.trim(),  // Ensure comment is trimmed
+    setIsSaving(true);
+    setError("");
+    setSuccessMessage("");
+    setTmdbMessage("");
+
+    const cleanImdbID = imdbID.trim();
+
+    const movieEntry = {
+      title: movieData.title,
+      director: movieData.director,
+      year: movieData.year,
+      watchTime: movieData.watchTime,
+      imdb: cleanImdbID,
+      comment: movieData.comment.trim(),
+      rating:
+        movieData.personalRating.trim() !== ""
+          ? movieData.personalRating.trim()
+          : null,
     };
 
-    // Add rating only if it is not empty, otherwise set it to null
-    movieEntry.rating = movieData.personalRating.trim() !== '' ? movieData.personalRating.trim() : null;
-
     try {
-        const { data, error } = await supabase
-            .from('movies_2024')
-            .insert([movieEntry]);
-        if (error) {
-            setError(error.message);
-        } else {
-            setSuccessMessage('Movie added successfully!');
-            setTimeout(() => {
-                router.push('/'); // Redirect to homepage after 2 seconds
-            }, 2000);
+      const { data, error } = await supabase
+        .from("movies_2024")
+        .insert([movieEntry])
+        .select("id, imdb")
+        .single();
+
+      if (error) {
+        setError(error.message);
+        setIsSaving(false);
+        return;
+      }
+
+      if (data?.id && cleanImdbID) {
+        try {
+          const tmdbResponse = await fetch("/api/fetch-tmdb-meta", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              movieId: data.id,
+            }),
+          });
+
+          const tmdbData = await tmdbResponse.json();
+
+          if (!tmdbResponse.ok) {
+            console.warn("TMDb meta fetch failed:", tmdbData);
+
+            setTmdbMessage(
+              "Movie saved, but TMDb metadata was not fetched."
+            );
+          } else {
+            setTmdbMessage("TMDb metadata fetched successfully.");
+          }
+        } catch (tmdbError) {
+          console.warn("TMDb meta fetch failed:", tmdbError);
+
+          setTmdbMessage("Movie saved, but TMDb metadata was not fetched.");
         }
+      }
+
+      setSuccessMessage("Movie added successfully!");
+
+      setTimeout(() => {
+        if (data?.id) {
+          router.push(`/movies/${data.id}`);
+        } else {
+          router.push("/");
+        }
+      }, 1200);
     } catch (error) {
-        setError('Failed to save movie details');
+      setError("Failed to save movie details");
+    } finally {
+      setIsSaving(false);
     }
-};
+  };
 
   return (
     <Container>
       <h1>Add New Movie</h1>
+
       <InputGroup>
         <Input
           type="text"
@@ -97,48 +165,57 @@ export default function CreateMovie() {
           onChange={(e) => setImdbID(e.target.value)}
         />
       </InputGroup>
-      <Button onClick={fetchMovieData} disabled={isLoading || !imdbID}>
-        Fetch Movie Data
+
+      <Button onClick={fetchMovieData} disabled={isLoading || !imdbID.trim()}>
+        {isLoading ? "Fetching..." : "Fetch Movie Data"}
       </Button>
-     
+
       <Form>
         {Object.entries(movieData).map(([key, value]) => (
           <InputGroup key={key}>
-            {key === 'comment' ? (
+            {key === "comment" ? (
               <TextArea
                 value={value}
-                onChange={(e) => setMovieData({ ...movieData, [key]: e.target.value })}
+                onChange={(e) =>
+                  setMovieData({ ...movieData, [key]: e.target.value })
+                }
               />
             ) : (
               <Input
-                type={key === 'watchTime' ? 'date' : 'text'}
+                type={key === "watchTime" ? "date" : "text"}
                 value={value}
-                onChange={(e) => setMovieData({ ...movieData, [key]: e.target.value })}
+                onChange={(e) =>
+                  setMovieData({ ...movieData, [key]: e.target.value })
+                }
               />
             )}
-            <Label>{key.replace(/([A-Z])/g, ' $1').trim()}</Label>
+
+            <Label>{key.replace(/([A-Z])/g, " $1").trim()}</Label>
           </InputGroup>
         ))}
-        {poster && <Poster src={poster} alt="Movie Poster" />}
-       
-        <Info>Runtime: {extraDetails.runtime}</Info>
-        <Info>Genre: {extraDetails.genre}</Info>
 
-        
+        {poster && poster !== "N/A" && (
+          <Poster src={poster} alt="Movie Poster" />
+        )}
+
+        <Info>Runtime: {extraDetails.runtime || "—"}</Info>
+        <Info>Genre: {extraDetails.genre || "—"}</Info>
+
         {extraDetails.ratings.map((rating, index) => (
-          <Info key={index}>{rating.Source}: {rating.Value}</Info>
+          <Info key={index}>
+            {rating.Source}: {rating.Value}
+          </Info>
         ))}
-        <Button onClick={handleSave}>
-          <CirclePlus size={16} style={{ marginRight: '8px' }} /> Save Movie
+
+        <Button onClick={handleSave} disabled={isSaving}>
+          <CirclePlus size={16} style={{ marginRight: "8px" }} />
+          {isSaving ? "Saving..." : "Save Movie"}
         </Button>
 
-		  {error && <ErrorMessage>{error}</ErrorMessage>}
-      {successMessage && <SuccessMessage>{successMessage}</SuccessMessage>}
-
-
+        {error && <ErrorMessage>{error}</ErrorMessage>}
+        {tmdbMessage && <TmdbMessage>{tmdbMessage}</TmdbMessage>}
+        {successMessage && <SuccessMessage>{successMessage}</SuccessMessage>}
       </Form>
-
-	 
     </Container>
   );
 }
@@ -178,8 +255,6 @@ const Input = styled.input`
   font-size: 16px;
 `;
 
-
-
 const Label = styled.label`
   font-size: 14px;
   color: #666;
@@ -203,26 +278,27 @@ const TextArea = styled.textarea`
   border: 2px solid #ddd;
   border-radius: 4px;
   font-size: 16px;
-  height: 100px;  // Adjust height as needed
+  height: 100px;
 `;
 
 const SuccessMessage = styled.div`
-
-padding: 20px;
+  padding: 20px;
   margin-top: 10px;
-
-  /* margin: 0 auto; */
   border-radius: 6px;
-  background-color: #4ade80; 
-  
+  background-color: #4ade80;
+`;
+
+const TmdbMessage = styled.div`
+  padding: 14px 20px;
+  margin-top: 10px;
+  border-radius: 6px;
+  background-color: #dbeafe;
+  color: #1e3a8a;
 `;
 
 const ErrorMessage = styled.div`
-padding: 20px;
+  padding: 20px;
   margin-top: 10px;
-
-  /* margin: 0 auto; */
   border-radius: 6px;
   background-color: #fde047;
- 
 `;

@@ -1,14 +1,214 @@
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import styled from "styled-components";
-import { useRouter } from "next/router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const PAGE_SIZE = 25;
 
-export default function Table({ newItems = [] }) {
-  const router = useRouter();
+const QUICK_FILTERS = [
+  { value: "all", label: "All" },
+  { value: "no_rating", label: "No rating" },
 
+  { value: "imdb_missing", label: "IMDb missing" },
+  { value: "tmdb_missing", label: "TMDb missing" },
+  { value: "high_rated", label: "High rated 8+" },
+  { value: "no_watch_date", label: "No watch date" },
+];
+
+function getTmdbYear(item) {
+  const releaseDate = item.external_meta?.tmdb?.releaseDate;
+
+  if (!releaseDate) return "—";
+
+  const match = String(releaseDate).match(/\d{4}/);
+
+  return match ? match[0] : "—";
+}
+
+function normalizeSearchText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .replace(/[“”«»]/g, '"')
+    .replace(/[’‘]/g, "'")
+    .replace(/[^a-zа-я0-9\s'-]/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getTmdbMeta(item) {
+  return item.external_meta?.tmdb || {};
+}
+
+function getAlternativeTitles(tmdb) {
+  if (!Array.isArray(tmdb.alternativeTitles)) {
+    return [];
+  }
+
+  return tmdb.alternativeTitles
+    .map((item) => item?.title)
+    .filter(Boolean);
+}
+
+function getRuAlternativeTitles(tmdb) {
+  if (!Array.isArray(tmdb.ruAlternativeTitles)) {
+    return [];
+  }
+
+  return tmdb.ruAlternativeTitles.filter(Boolean);
+}
+
+function getGenres(tmdb) {
+  return Array.isArray(tmdb.genres) ? tmdb.genres.filter(Boolean) : [];
+}
+
+function getDirectorsFromTmdb(tmdb) {
+  if (!Array.isArray(tmdb.directors)) {
+    return [];
+  }
+
+  return tmdb.directors
+    .flatMap((person) => [person?.name, person?.originalName])
+    .filter(Boolean);
+}
+
+function getCastFromTmdb(tmdb) {
+  if (!Array.isArray(tmdb.cast)) {
+    return [];
+  }
+
+  return tmdb.cast
+    .flatMap((person) => [
+      person?.name,
+      person?.originalName,
+      person?.character,
+    ])
+    .filter(Boolean);
+}
+
+function getStrictSearchText(item) {
+  return [
+    item.title,
+    item.director,
+    item.year,
+    item.imdb,
+  ]
+    .filter(Boolean)
+    .map(normalizeSearchText)
+    .join(" ");
+}
+
+function getExtendedSearchText(item) {
+  const tmdb = getTmdbMeta(item);
+
+  return [
+    item.title,
+    item.director,
+    item.year,
+    item.rating,
+    item.watchTime,
+    item.comment,
+    item.imdb,
+
+    tmdb.titles?.ru,
+    tmdb.titles?.en,
+    tmdb.titles?.original,
+
+    tmdb.overview?.ru,
+    tmdb.overview?.en,
+
+    tmdb.releaseDate,
+    tmdb.originalLanguage,
+    tmdb.runtime,
+
+    ...getAlternativeTitles(tmdb),
+    ...getRuAlternativeTitles(tmdb),
+    ...getGenres(tmdb),
+    ...getDirectorsFromTmdb(tmdb),
+    ...getCastFromTmdb(tmdb),
+  ]
+    .filter(Boolean)
+    .map(normalizeSearchText)
+    .join(" ");
+}
+
+function hasNoRating(item) {
+  return item.rating === null || item.rating === undefined || item.rating === "";
+}
+
+function hasNoWatchDate(item) {
+  return !item.watchTime;
+}
+
+
+
+function applyQuickFilter(items, quickFilter) {
+  if (quickFilter === "no_rating") {
+    return items.filter(hasNoRating);
+  }
+
+
+
+  if (quickFilter === "imdb_missing") {
+    return items.filter((item) => !item.imdb);
+  }
+
+  if (quickFilter === "tmdb_missing") {
+    return items.filter((item) => !item.external_meta?.tmdb);
+  }
+
+  if (quickFilter === "high_rated") {
+    return items.filter((item) => Number(item.rating) >= 8);
+  }
+
+  if (quickFilter === "no_watch_date") {
+    return items.filter(hasNoWatchDate);
+  }
+
+  return items;
+}
+
+function getSecondaryTitle(item) {
+  const tmdb = getTmdbMeta(item);
+  const currentTitle = normalizeSearchText(item.title);
+
+  const ruTitle = tmdb.titles?.ru || "";
+  const enTitle = tmdb.titles?.en || "";
+  const originalTitle = tmdb.titles?.original || "";
+
+  const candidates = [ruTitle, originalTitle, enTitle].filter(Boolean);
+
+  return (
+    candidates.find((title) => normalizeSearchText(title) !== currentTitle) ||
+    ""
+  );
+}
+
+function getTitleMetaLine(item) {
+  const tmdb = getTmdbMeta(item);
+
+  const secondaryTitle = getSecondaryTitle(item);
+  const genres = getGenres(tmdb).slice(0, 2);
+  const cast = Array.isArray(tmdb.cast)
+    ? tmdb.cast
+      .slice(0, 2)
+      .map((person) => person?.name)
+      .filter(Boolean)
+    : [];
+
+  const parts = [
+    secondaryTitle,
+    genres.length ? genres.join(", ") : "",
+    cast.length ? cast.join(", ") : "",
+  ].filter(Boolean);
+
+  return parts.join(" · ");
+}
+
+export default function Table({ newItems = [] }) {
   const [search, setSearch] = useState("");
+  const [searchMode, setSearchMode] = useState("strict");
+  const [quickFilter, setQuickFilter] = useState("all");
   const [sortKey, setSortKey] = useState("watchTime");
   const [sortDirection, setSortDirection] = useState("desc");
   const [page, setPage] = useState(1);
@@ -30,22 +230,38 @@ export default function Table({ newItems = [] }) {
     return sortDirection === "asc" ? "↑" : "↓";
   }
 
+  function handleSearchChange(e) {
+    setSearch(e.target.value);
+    setPage(1);
+  }
+
+  function handleSearchModeChange(mode) {
+    setSearchMode(mode);
+    setPage(1);
+  }
+
+  function handleQuickFilterChange(filter) {
+    setQuickFilter(filter);
+    setPage(1);
+  }
+
   const filtered = useMemo(() => {
-    const query = search.trim().toLowerCase();
+    const query = normalizeSearchText(search);
 
-    let items = !query
-      ? [...newItems]
-      : newItems.filter((item) => {
-        const title = String(item.title || "").toLowerCase();
-        const director = String(item.director || "").toLowerCase();
-        const year = String(item.year || "").toLowerCase();
+    let items = [...newItems];
 
-        return (
-          title.includes(query) ||
-          director.includes(query) ||
-          year.includes(query)
-        );
+    if (query) {
+      items = items.filter((item) => {
+        const searchText =
+          searchMode === "extended"
+            ? getExtendedSearchText(item)
+            : getStrictSearchText(item);
+
+        return searchText.includes(query);
       });
+    }
+
+    items = applyQuickFilter(items, quickFilter);
 
     items.sort((a, b) => {
       let aValue = a?.[sortKey];
@@ -56,11 +272,20 @@ export default function Table({ newItems = [] }) {
         bValue = String(bValue || "").toLowerCase();
       }
 
-      if (sortKey === "year" || sortKey === "rating") {
+      if (sortKey === "year") {
+        aValue = Number(getTmdbYear(a));
+        bValue = Number(getTmdbYear(b));
+
+        aValue = Number.isNaN(aValue) ? -Infinity : aValue;
+        bValue = Number.isNaN(bValue) ? -Infinity : bValue;
+      }
+
+      if (sortKey === "rating") {
         aValue =
           aValue === null || aValue === undefined || aValue === ""
             ? -Infinity
             : Number(aValue);
+
         bValue =
           bValue === null || bValue === undefined || bValue === ""
             ? -Infinity
@@ -78,7 +303,7 @@ export default function Table({ newItems = [] }) {
     });
 
     return items;
-  }, [newItems, search, sortKey, sortDirection]);
+  }, [newItems, search, searchMode, quickFilter, sortKey, sortDirection]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -111,20 +336,15 @@ export default function Table({ newItems = [] }) {
     return <RatingPill $tone="neutral">{rating}</RatingPill>;
   }
 
-  function openMovie(id) {
-    router.push(`/movies/${id}`);
-  }
-
-  function handleSearchChange(e) {
-    setSearch(e.target.value);
-    setPage(1);
-  }
-
   return (
     <Wrapper>
       <TopBar>
         <SearchInput
-          placeholder="Search by title, director, year..."
+          placeholder={
+            searchMode === "extended"
+              ? "Extended search: title, RU title, cast, genre, comment..."
+              : "Strict search: title, director, year, IMDb..."
+          }
           value={search}
           onChange={handleSearchChange}
         />
@@ -133,6 +353,47 @@ export default function Table({ newItems = [] }) {
           {filtered.length} {filtered.length === 1 ? "movie" : "movies"}
         </ResultCount>
       </TopBar>
+
+      <Toolbar>
+        <ToolbarGroup>
+          <ToolbarLabel>Search mode</ToolbarLabel>
+
+          <SegmentedControl>
+            <SegmentButton
+              type="button"
+              $active={searchMode === "strict"}
+              onClick={() => handleSearchModeChange("strict")}
+            >
+              Strict
+            </SegmentButton>
+
+            <SegmentButton
+              type="button"
+              $active={searchMode === "extended"}
+              onClick={() => handleSearchModeChange("extended")}
+            >
+              Extended
+            </SegmentButton>
+          </SegmentedControl>
+        </ToolbarGroup>
+
+        <ToolbarGroup>
+          <ToolbarLabel>Quick filters</ToolbarLabel>
+
+          <FilterChips>
+            {QUICK_FILTERS.map((filter) => (
+              <FilterChip
+                key={filter.value}
+                type="button"
+                $active={quickFilter === filter.value}
+                onClick={() => handleQuickFilterChange(filter.value)}
+              >
+                {filter.label}
+              </FilterChip>
+            ))}
+          </FilterChips>
+        </ToolbarGroup>
+      </Toolbar>
 
       <TableContainer>
         <TableWrap>
@@ -161,15 +422,28 @@ export default function Table({ newItems = [] }) {
           </thead>
 
           <tbody>
-            {paginated.map((item) => (
-              <TableRow key={item.id} onClick={() => openMovie(item.id)}>
-                <TitleCell>{item.title || "—"}</TitleCell>
-                <td>{item.director || "—"}</td>
-                <td>{item.year || "—"}</td>
-                <td>{renderRating(item.rating)}</td>
-                <td>{item.watchTime || "—"}</td>
-              </TableRow>
-            ))}
+            {paginated.map((item) => {
+              const titleMetaLine = getTitleMetaLine(item);
+
+              return (
+                <TableRow key={item.id}>
+                  <TitleCell>
+                    <MovieLink href={`/movies/${item.id}`}>
+                      {item.title || "—"}
+                    </MovieLink>
+
+                    {titleMetaLine && (
+                      <TitleMetaLine>{titleMetaLine}</TitleMetaLine>
+                    )}
+                  </TitleCell>
+
+                  <td>{item.director || "—"}</td>
+                  <td>{getTmdbYear(item)}</td>
+                  <td>{renderRating(item.rating)}</td>
+                  <td>{item.watchTime || "—"}</td>
+                </TableRow>
+              );
+            })}
           </tbody>
         </TableWrap>
       </TableContainer>
@@ -212,7 +486,7 @@ const TopBar = styled.div`
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 
   @media (max-width: 700px) {
     flex-direction: column;
@@ -239,6 +513,70 @@ const ResultCount = styled.div`
   white-space: nowrap;
   color: #64748b;
   font-size: 14px;
+`;
+
+const Toolbar = styled.div`
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+`;
+
+const ToolbarGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+`;
+
+const ToolbarLabel = styled.div`
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 88px;
+`;
+
+const SegmentedControl = styled.div`
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f8fafc;
+`;
+
+const SegmentButton = styled.button`
+  padding: 7px 11px;
+  border: 0;
+  border-radius: 9px;
+  background: ${({ $active }) => ($active ? "#111827" : "transparent")};
+  color: ${({ $active }) => ($active ? "#fff" : "#475569")};
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+
+  &:hover {
+    background: ${({ $active }) => ($active ? "#111827" : "#eef2f7")};
+  }
+`;
+
+const FilterChips = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+`;
+
+const FilterChip = styled.button`
+  padding: 7px 10px;
+  border: 1px solid ${({ $active }) => ($active ? "#111827" : "#e5e7eb")};
+  border-radius: 999px;
+  background: ${({ $active }) => ($active ? "#111827" : "#fff")};
+  color: ${({ $active }) => ($active ? "#fff" : "#475569")};
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+
+  &:hover {
+    border-color: #111827;
+  }
 `;
 
 const TableContainer = styled.div`
@@ -303,8 +641,6 @@ const SortMark = styled.span`
 `;
 
 const TableRow = styled.tr`
-  cursor: pointer;
-
   &:hover {
     background: #fafafa;
   }
@@ -312,8 +648,28 @@ const TableRow = styled.tr`
 
 const TitleCell = styled.td`
   font-weight: 500;
-  max-width: 320px;
+  max-width: 380px;
   word-break: break-word;
+`;
+
+const MovieLink = styled(Link)`
+  display: inline-block;
+  color: inherit;
+  text-decoration: none;
+  font-weight: 650;
+  line-height: 1.35;
+
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
+const TitleMetaLine = styled.div`
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 12.5px;
+  line-height: 1.35;
+  font-weight: 400;
 `;
 
 const BasePill = styled.span`
@@ -334,6 +690,7 @@ const RatingPill = styled(BasePill)`
     if ($tone === "bad") return "#f6c1c1";
     return "#e5e7eb";
   }};
+
   color: ${({ $tone }) => {
     if ($tone === "good") return "#083344";
     if ($tone === "bad") return "#7f1d1d";

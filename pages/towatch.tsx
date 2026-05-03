@@ -133,9 +133,9 @@ export default function Page() {
     setMovies((prev) => prev.filter((m) => m.id !== id));
   }
 
-  const goToEdit = (id: MovieItem["id"]) => {
-    window.location.href = `/edit-movie/${id}`;
-  };
+ const goToMovie = (id: MovieItem["id"]) => {
+  window.location.href = `/movies/${id}`;
+};
 
   return (
     <PageWrap>
@@ -156,18 +156,18 @@ export default function Page() {
       ) : (
         <Grid>
           {movies.map((item) => (
-            <MovieCard
-              key={item.id}
-              item={{
-                ...item,
-                onPosterError: () => markPosterError(item.id),
-              }}
-              onEdit={() => goToEdit(item.id)}
-              onRemove={() => handleRemoveMovie(item.id)}
-              onPriorityChange={(priority) =>
-                handleUpdatePriority(item.id, priority)
-              }
-            />
+          <MovieCard
+  key={item.id}
+  item={{
+    ...item,
+    onPosterError: () => markPosterError(item.id),
+  }}
+  onEdit={() => goToMovie(item.id)}
+  onRemove={() => handleRemoveMovie(item.id)}
+  onPriorityChange={(priority) =>
+    handleUpdatePriority(item.id, priority)
+  }
+/>
           ))}
         </Grid>
       )}

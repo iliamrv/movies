@@ -108,18 +108,14 @@ export default function Page() {
       ) : (
         <Grid>
           {movies.map((item) => (
-            <MovieCard
-              key={item.id}
-              item={{
-                ...item,
-                onPosterError: () => markPosterError(item.id),
-              }}
-              onEdit={() => goToMovie(item.id)}
-              onRemove={() => handleRemoveMovie(item.id)}
-              onPriorityChange={(priority) =>
-                handleUpdatePriority(item.id, priority)
-              }
-            />
+       <MovieCard
+  key={item.id}
+  item={{
+    ...item,
+    onPosterError: () => markPosterError(item.id),
+  }}
+  showActions={false}
+/>
           ))}
         </Grid>
       )}
