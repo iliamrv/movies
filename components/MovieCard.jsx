@@ -52,20 +52,28 @@ export default function MovieCard({
     return /^https?:\/\//i.test(String(value));
   }
 
-  function getPosterSrc() {
-    const omdbPoster = item.Poster;
-    const tmdbPoster = item.external_meta?.tmdb?.posterUrl;
+function getPosterSrc() {
+  const tmdbPoster = item.external_meta?.tmdb?.posterUrl;
+  const omdbPoster = item.Poster;
 
-    if (isValidPosterUrl(omdbPoster) && failedPosterSrc !== omdbPoster) {
-      return omdbPoster;
-    }
-
-    if (isValidPosterUrl(tmdbPoster) && failedPosterSrc !== tmdbPoster) {
-      return tmdbPoster;
-    }
-
-    return "";
+  // 1. TMDb (основной источник)
+  if (
+    isValidPosterUrl(tmdbPoster) &&
+    failedPosterSrc !== tmdbPoster
+  ) {
+    return tmdbPoster;
   }
+
+  // 2. fallback на OMDb
+  if (
+    isValidPosterUrl(omdbPoster) &&
+    failedPosterSrc !== omdbPoster
+  ) {
+    return omdbPoster;
+  }
+
+  return "";
+}
 
   function getPrimaryGenre() {
     if (item.Genre && item.Genre !== "N/A") {

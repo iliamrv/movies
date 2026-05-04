@@ -319,6 +319,37 @@ const [movieData, setMovieData] = useState({
           />
         </InputGroup>
 
+<RatingGroup>
+  <Label>Rating</Label>
+
+  <RatingButtons>
+    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((rating) => (
+      <RatingButton
+        key={rating}
+        type="button"
+        $active={String(movieData.personalRating) === String(rating)}
+        onClick={() =>
+          setMovieData({
+            ...movieData,
+            personalRating:
+              String(movieData.personalRating) === String(rating)
+                ? ""
+                : String(rating),
+          })
+        }
+      >
+        {rating}
+      </RatingButton>
+    ))}
+  </RatingButtons>
+
+  <RatingHint>
+    {movieData.personalRating
+      ? `Your rating: ${movieData.personalRating}/10`
+      : "No rating"}
+  </RatingHint>
+</RatingGroup>
+
         <InputGroup>
           <Label>Date</Label>
           <Input
@@ -358,3 +389,36 @@ const [movieData, setMovieData] = useState({
     </Container>
   );
 }
+
+const RatingGroup = styled.div`
+  margin-bottom: 20px;
+`;
+
+const RatingButtons = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+`;
+
+const RatingButton = styled.button`
+  width: 42px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1px solid ${({ $active }) => ($active ? "#111827" : "#d7dee8")};
+  background: ${({ $active }) => ($active ? "#111827" : "#fff")};
+  color: ${({ $active }) => ($active ? "#fff" : "#111827")};
+  font-weight: 700;
+  cursor: pointer;
+
+  &:hover {
+    border-color: #111827;
+    background: ${({ $active }) => ($active ? "#111827" : "#f8fafc")};
+  }
+`;
+
+const RatingHint = styled.div`
+  margin-top: 8px;
+  color: #64748b;
+  font-size: 13px;
+`;

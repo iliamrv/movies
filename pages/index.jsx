@@ -8,11 +8,10 @@ import MovieCard from "../components/MovieCard";
 import { Button } from "../styles/globalStyles";
 
 import {
-  deleteMovieById,
-  updateMoviePriority,
+
   getWatchedMovies,
 } from "../src/api/movies";
-import { fetchOmdbById, mergeMovieData } from "../src/api/omdb";
+
 
 export default function Page() {
   const router = useRouter();
@@ -24,33 +23,22 @@ export default function Page() {
     fetchMovies();
   }, []);
 
-  const fetchMovies = async () => {
-    setIsLoading(true);
+const fetchMovies = async () => {
+  setIsLoading(true);
 
-    const { data, error } = await getWatchedMovies(20);
+  const { data, error } = await getWatchedMovies(20);
 
-    if (!error && data) {
-      const enriched = await Promise.all(
-        data.map(async (movie) => {
-          if (!movie.imdb) {
-            return { ...movie, posterError: false };
-          }
+  if (!error && data) {
+    const enriched = data.map((movie) => ({
+      ...movie,
+      posterError: false,
+    }));
 
-          const imdbData = await fetchOmdbById(movie.imdb);
-          const merged = mergeMovieData(movie, imdbData);
+    setMovies(enriched);
+  }
 
-          return {
-            ...merged,
-            posterError: false,
-          };
-        })
-      );
-
-      setMovies(enriched);
-    }
-
-    setIsLoading(false);
-  };
+  setIsLoading(false);
+};
 
   function markPosterError(id) {
     setMovies((prev) =>
@@ -60,27 +48,10 @@ export default function Page() {
     );
   }
 
-  async function handleUpdatePriority(id, priority) {
-    const { error } = await updateMoviePriority(id, priority);
 
-    if (error) return;
 
-    setMovies((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, priority } : m))
-    );
-  }
 
-  async function handleRemoveMovie(id) {
-    const { error } = await deleteMovieById(id);
 
-    if (error) return;
-
-    setMovies((prev) => prev.filter((m) => m.id !== id));
-  }
-
-  const goToMovie = (id) => {
-    router.push(`/movies/${id}`);
-  };
 
   return (
     <PageWrap>

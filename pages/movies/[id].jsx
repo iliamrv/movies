@@ -2,11 +2,12 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import styled from "styled-components";
+import { fetchOmdbById, mergeMovieData } from "../../src/api/omdb";
 
 import { Edit3, Trash2, ArrowLeft, Film, Database } from "lucide-react";
 import { StyledButtons, Button } from "../../styles/globalStyles";
 import { getMovieById, deleteMovieById } from "../../src/api/movies";
-import { fetchOmdbById, mergeMovieData } from "../../src/api/omdb";
+
 
 export default function MovieDetails() {
   const router = useRouter();
@@ -88,51 +89,52 @@ export default function MovieDetails() {
     fetchMovie(id);
   }, [id]);
 
-  const fetchMovie = async (movieId) => {
-    setIsLoading(true);
-    setError("");
-    setTmdbError("");
-    setPosterFailed(false);
+const fetchMovie = async (movieId) => {
+  setIsLoading(true);
+  setError("");
+  setTmdbError("");
+  setPosterFailed(false);
 
-    try {
-      const { data, error } = await getMovieById(movieId);
+  try {
+    const { data, error } = await getMovieById(movieId);
 
-      if (error) throw error;
+    if (error) throw error;
 
-      let finalMovie = data;
+    let finalMovie = data;
 
-      if (data?.imdb) {
-        const imdbData = await fetchOmdbById(data.imdb);
-        finalMovie = mergeMovieData(data, imdbData);
-      }
-
-      setMovie(finalMovie);
-    } catch (err) {
-      setError("Failed to fetch movie details: " + err.message);
+    // OMDb нужен только для внешних рейтингов: IMDb, Rotten Tomatoes, Metacritic
+    if (data?.imdb) {
+      const imdbData = await fetchOmdbById(data.imdb);
+      finalMovie = mergeMovieData(data, imdbData);
     }
 
-    setIsLoading(false);
-  };
+    setMovie(finalMovie);
+  } catch (err) {
+    setError("Failed to fetch movie details: " + err.message);
+  }
+
+  setIsLoading(false);
+};
 
   function isValidPosterUrl(value) {
     if (!value || value === "N/A") return false;
     return /^https?:\/\//i.test(String(value));
   }
 
-  function getPosterSrc() {
-    const omdbPoster = movie?.Poster;
-    const tmdbPoster = movie?.external_meta?.tmdb?.posterUrl;
+function getPosterSrc() {
+  const tmdbPoster = movie?.external_meta?.tmdb?.posterUrl;
+  const omdbPoster = movie?.Poster;
 
-    if (!posterFailed && isValidPosterUrl(omdbPoster)) {
-      return omdbPoster;
-    }
-
-    if (isValidPosterUrl(tmdbPoster)) {
-      return tmdbPoster;
-    }
-
-    return "";
+  if (!posterFailed && isValidPosterUrl(tmdbPoster)) {
+    return tmdbPoster;
   }
+
+  if (!posterFailed && isValidPosterUrl(omdbPoster)) {
+    return omdbPoster;
+  }
+
+  return "";
+}
 
   const watchDates = Array.isArray(movie?.watch_dates)
     ? movie.watch_dates
@@ -144,6 +146,7 @@ export default function MovieDetails() {
 
   const tmdbMeta = movie?.external_meta?.tmdb;
   const posterSrc = getPosterSrc();
+
 
   return (
     <PageWrap>
@@ -187,19 +190,10 @@ export default function MovieDetails() {
                   <MetaValue>{movie.director || "—"}</MetaValue>
                 </MetaCard>
 
-                <MetaCard>
-                  <MetaLabel>Year</MetaLabel>
-                  <MetaValue>{movie.year || movie.Year || "—"}</MetaValue>
-                </MetaCard>
+            
 
-                <MetaCard>
-                  <MetaLabel>Runtime</MetaLabel>
-                  <MetaValue>
-                    {movie.Runtime || tmdbMeta?.runtime
-                      ? movie.Runtime || `${tmdbMeta.runtime} min`
-                      : "—"}
-                  </MetaValue>
-                </MetaCard>
+        
+
 
                 <MetaCard>
                   <MetaLabel>Genre</MetaLabel>
@@ -217,11 +211,17 @@ export default function MovieDetails() {
                   <MetaValue>{movie.watchTime || "n/a"}</MetaValue>
                 </MetaCard>
 
-                <MetaCard>
-                  <MetaLabel>IMDb</MetaLabel>
-                  <MetaValue>{movie.imdb || "—"}</MetaValue>
-                </MetaCard>
+            <MetaCard>
+  <MetaLabel>My  Rating</MetaLabel>
+  <MetaValue>
+    {movie.rating !== null && movie.rating !== undefined && movie.rating !== ""
+      ? `${movie.rating}/10`
+      : "—"}
+  </MetaValue>
+</MetaCard>
               </MetaGrid>
+
+           
 
               <TmdbActions>
                 <Button
