@@ -46,3 +46,4 @@ export async function updateMoviePriority(id, priority) {
 		.update({ priority })
 		.eq("id", id);
 }
+

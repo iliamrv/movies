@@ -3,6 +3,17 @@ import Link from "next/link";
 import styled from "styled-components";
 import { Film, Flame, Star, Clock3, Trash2, Copy } from "lucide-react";
 
+import {
+  getMovieTitle,
+  getMovieOriginalTitle,
+  getMovieDirector,
+  getPrimaryGenre,
+  getMoviePoster,
+  getImdbRating,
+  getRottenTomatoesRating,
+  getDaysAgo,
+} from "../src/utils/movieUtils";
+
 export default function MovieCard({
   item,
   onEdit,
@@ -13,103 +24,39 @@ export default function MovieCard({
   const [failedPosterSrc, setFailedPosterSrc] = useState("");
   const [copied, setCopied] = useState(false);
 
-  function getDisplayTitle() {
-    const ruTitle = item.external_meta?.tmdb?.titles?.ru;
-    return ruTitle || item.title || "";
-  }
+  const displayTitle = getMovieTitle(item);
+  const originalTitle = getMovieOriginalTitle(item);
+  const displayDirector = getMovieDirector(item);
+  const primaryGenre = getPrimaryGenre(item);
+  const imdbRating = getImdbRating(item);
+  const rottenRating = getRottenTomatoesRating(item);
 
-  function getOriginalTitle() {
-    const displayTitle = getDisplayTitle();
-
-    const originalTitle =
-      item.external_meta?.tmdb?.titles?.original ||
-      item.external_meta?.tmdb?.titles?.en ||
-      item.title ||
-      "";
-
-    if (!originalTitle || originalTitle === displayTitle) {
-      return "";
-    }
-
-    return originalTitle;
-  }
-
-  function getDisplayDirector() {
-    const tmdbDirectors = item.external_meta?.tmdb?.directors;
-
-    if (Array.isArray(tmdbDirectors) && tmdbDirectors.length > 0) {
-      return tmdbDirectors
-        .map((director) => director.name)
-        .filter(Boolean)
-        .join(", ");
-    }
-
-    return item.Director || item.director || "—";
-  }
-
-  function isValidPosterUrl(value) {
-    if (!value || value === "N/A") return false;
-    return /^https?:\/\//i.test(String(value));
-  }
-
-function getPosterSrc() {
-  const candidates = [
-    item.external_meta?.tmdb?.posterUrl,
-    item.external_meta?.tmdb?.poster_url,
-    item.poster_url,
-    item.poster,
-    item.Poster,
-  ];
-
-  return candidates.find(isValidPosterUrl) || "";
-}
-
-  function getPrimaryGenre() {
-    if (item.Genre && item.Genre !== "N/A") {
-      return item.Genre.split(",")[0]?.trim() || "";
-    }
-
-    const tmdbGenres = item.external_meta?.tmdb?.genres;
-
-    if (Array.isArray(tmdbGenres) && tmdbGenres.length > 0) {
-      return tmdbGenres[0];
-    }
-
-    return "";
-  }
-
-  function getImdbRating() {
-    if (!item.imdbRating || item.imdbRating === "N/A") return "";
-    return item.imdbRating;
-  }
-
-  function getRotten() {
-    if (!Array.isArray(item.Ratings)) return "";
-
-    const rottenRating = item.Ratings.find(
-      (rating) => rating.Source === "Rotten Tomatoes"
-    );
-
-    return rottenRating?.Value || "";
-  }
-
-  function getDaysAgo() {
-    if (!item.watchTime) return "?";
-
-    const diff = Date.now() - new Date(item.watchTime).getTime();
-
-    if (Number.isNaN(diff)) return "?";
-
-    return Math.floor(diff / (1000 * 60 * 60 * 24));
-  }
+  const posterSrc = getMoviePoster({
+    ...item,
+    Poster:
+      item?.Poster && item.Poster !== failedPosterSrc ? item.Poster : undefined,
+    poster:
+      item?.poster && item.poster !== failedPosterSrc ? item.poster : undefined,
+    poster_url:
+      item?.poster_url && item.poster_url !== failedPosterSrc
+        ? item.poster_url
+        : undefined,
+    external_meta: {
+      ...(item?.external_meta || {}),
+      tmdb: {
+        ...(item?.external_meta?.tmdb || {}),
+        posterUrl:
+          item?.external_meta?.tmdb?.posterUrl !== failedPosterSrc
+            ? item?.external_meta?.tmdb?.posterUrl
+            : undefined,
+      },
+    },
+  });
 
   async function handleCopyMovieInfo(e) {
     e.preventDefault();
     e.stopPropagation();
 
-    const displayTitle = getDisplayTitle();
-    const originalTitle = getOriginalTitle();
-    const director = getDisplayDirector();
     const year = item.year || item.Year || "";
     const comment = item.comment || "";
 
@@ -117,7 +64,7 @@ function getPosterSrc() {
       ? `${displayTitle} / ${originalTitle}`
       : displayTitle;
 
-    const textToCopy = [titlePart, director, year, comment]
+    const textToCopy = [titlePart, displayDirector, year, comment]
       .filter(Boolean)
       .join(" - ");
 
@@ -135,29 +82,14 @@ function getPosterSrc() {
   }
 
   function handlePosterError() {
-    const currentPosterSrc = getPosterSrc();
-
-    if (currentPosterSrc) {
-      setFailedPosterSrc(currentPosterSrc);
+    if (posterSrc) {
+      setFailedPosterSrc(posterSrc);
     }
 
     item.onPosterError?.();
   }
 
-  const posterSrc = getPosterSrc();
-  const displayTitle = getDisplayTitle();
-  const originalTitle = getOriginalTitle();
-  const displayDirector = getDisplayDirector();
-
-  console.log("CARD DEBUG:", {
-  id: item.id,
-  title: item.title,
-  Poster: item.Poster,
-  poster_url: item.poster_url,
-  tmdbPoster: item.external_meta?.tmdb?.posterUrl,
-  external_meta: item.external_meta,
-  posterSrc,
-});
+  const daysAgo = getDaysAgo(item.watchTime);
 
   return (
     <Card>
@@ -202,12 +134,12 @@ function getPosterSrc() {
         <Meta>{displayDirector}</Meta>
 
         <Badges>
-          {getPrimaryGenre() && <Badge>{getPrimaryGenre()}</Badge>}
-          {getImdbRating() && <Badge>IMDb {getImdbRating()}</Badge>}
-          {getRotten() && <Badge>RT {getRotten()}</Badge>}
+          {primaryGenre && <Badge>{primaryGenre}</Badge>}
+          {imdbRating && <Badge>IMDb {imdbRating}</Badge>}
+          {rottenRating && <Badge>RT {rottenRating}</Badge>}
         </Badges>
 
-        <Meta>Added {getDaysAgo()} days ago</Meta>
+        {daysAgo !== null && <Meta>Added {daysAgo} days ago</Meta>}
 
         {showActions && (
           <Row>
@@ -263,6 +195,8 @@ const PosterLink = styled(Link)`
   aspect-ratio: 2 / 3;
   background: #f3f4f6;
   cursor: pointer;
+  text-decoration: none;
+  color: inherit;
 `;
 
 const PosterImage = styled.img`
@@ -270,6 +204,7 @@ const PosterImage = styled.img`
   height: 100%;
   object-fit: cover;
   object-position: center;
+  display: block;
 `;
 
 const Placeholder = styled.div`

@@ -2,204 +2,47 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import styled from "styled-components";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  getStrictSearchText,
+  getExtendedSearchText,
+  applyQuickFilter,
+} from "../src/utils/movieSearchUtils";
+
+import {
+  normalizeSearchText,
+
+  getMovieTitle,
+  getMovieOriginalTitle,
+  getMovieDirector,
+  getMovieGenres,
+  getMovieYear,
+
+} from "../src/utils/movieUtils";
 
 const PAGE_SIZE = 25;
 
 const QUICK_FILTERS = [
   { value: "all", label: "All" },
-  { value: "no_rating", label: "No rating" },
-
-  { value: "imdb_missing", label: "IMDb missing" },
-  { value: "tmdb_missing", label: "TMDb missing" },
-  { value: "high_rated", label: "High rated 8+" },
-  { value: "no_watch_date", label: "No watch date" },
+  { value: "no_rating", label: "Unrated" },
+  { value: "high_rated", label: "High 8+" },
+  { value: "no_watch_date", label: "No date" },
+  { value: "imdb_missing", label: "Missing IMDb" },
+  { value: "tmdb_missing", label: "Missing TMDb" },
 ];
 
-function getTmdbYear(item) {
-  const releaseDate = item.external_meta?.tmdb?.releaseDate;
-
-  if (!releaseDate) return "—";
-
-  const match = String(releaseDate).match(/\d{4}/);
-
-  return match ? match[0] : "—";
-}
-
-function normalizeSearchText(value) {
-  return String(value || "")
-    .toLowerCase()
-    .replace(/ё/g, "е")
-    .replace(/[“”«»]/g, '"')
-    .replace(/[’‘]/g, "'")
-    .replace(/[^a-zа-я0-9\s'-]/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function getTmdbMeta(item) {
-  return item.external_meta?.tmdb || {};
-}
-
-function getAlternativeTitles(tmdb) {
-  if (!Array.isArray(tmdb.alternativeTitles)) {
-    return [];
-  }
-
-  return tmdb.alternativeTitles
-    .map((item) => item?.title)
-    .filter(Boolean);
-}
-
-function getRuAlternativeTitles(tmdb) {
-  if (!Array.isArray(tmdb.ruAlternativeTitles)) {
-    return [];
-  }
-
-  return tmdb.ruAlternativeTitles.filter(Boolean);
-}
-
-function getGenres(tmdb) {
-  return Array.isArray(tmdb.genres) ? tmdb.genres.filter(Boolean) : [];
-}
-
-function getDirectorsFromTmdb(tmdb) {
-  if (!Array.isArray(tmdb.directors)) {
-    return [];
-  }
-
-  return tmdb.directors
-    .flatMap((person) => [person?.name, person?.originalName])
-    .filter(Boolean);
-}
-
-function getCastFromTmdb(tmdb) {
-  if (!Array.isArray(tmdb.cast)) {
-    return [];
-  }
-
-  return tmdb.cast
-    .flatMap((person) => [
-      person?.name,
-      person?.originalName,
-      person?.character,
-    ])
-    .filter(Boolean);
-}
-
-function getStrictSearchText(item) {
-  return [
-    item.title,
-    item.director,
-    item.year,
-    item.imdb,
-  ]
-    .filter(Boolean)
-    .map(normalizeSearchText)
-    .join(" ");
-}
-
-function getExtendedSearchText(item) {
-  const tmdb = getTmdbMeta(item);
-
-  return [
-    item.title,
-    item.director,
-    item.year,
-    item.rating,
-    item.watchTime,
-    item.comment,
-    item.imdb,
-
-    tmdb.titles?.ru,
-    tmdb.titles?.en,
-    tmdb.titles?.original,
-
-    tmdb.overview?.ru,
-    tmdb.overview?.en,
-
-    tmdb.releaseDate,
-    tmdb.originalLanguage,
-    tmdb.runtime,
-
-    ...getAlternativeTitles(tmdb),
-    ...getRuAlternativeTitles(tmdb),
-    ...getGenres(tmdb),
-    ...getDirectorsFromTmdb(tmdb),
-    ...getCastFromTmdb(tmdb),
-  ]
-    .filter(Boolean)
-    .map(normalizeSearchText)
-    .join(" ");
-}
-
-function hasNoRating(item) {
-  return item.rating === null || item.rating === undefined || item.rating === "";
-}
-
-function hasNoWatchDate(item) {
-  return !item.watchTime;
-}
 
 
 
-function applyQuickFilter(items, quickFilter) {
-  if (quickFilter === "no_rating") {
-    return items.filter(hasNoRating);
-  }
 
 
-
-  if (quickFilter === "imdb_missing") {
-    return items.filter((item) => !item.imdb);
-  }
-
-  if (quickFilter === "tmdb_missing") {
-    return items.filter((item) => !item.external_meta?.tmdb);
-  }
-
-  if (quickFilter === "high_rated") {
-    return items.filter((item) => Number(item.rating) >= 8);
-  }
-
-  if (quickFilter === "no_watch_date") {
-    return items.filter(hasNoWatchDate);
-  }
-
-  return items;
-}
-
-function getSecondaryTitle(item) {
-  const tmdb = getTmdbMeta(item);
-  const currentTitle = normalizeSearchText(item.title);
-
-  const ruTitle = tmdb.titles?.ru || "";
-  const enTitle = tmdb.titles?.en || "";
-  const originalTitle = tmdb.titles?.original || "";
-
-  const candidates = [ruTitle, originalTitle, enTitle].filter(Boolean);
-
-  return (
-    candidates.find((title) => normalizeSearchText(title) !== currentTitle) ||
-    ""
-  );
-}
 
 function getTitleMetaLine(item) {
-  const tmdb = getTmdbMeta(item);
-
-  const secondaryTitle = getSecondaryTitle(item);
-  const genres = getGenres(tmdb).slice(0, 2);
-  const cast = Array.isArray(tmdb.cast)
-    ? tmdb.cast
-      .slice(0, 2)
-      .map((person) => person?.name)
-      .filter(Boolean)
-    : [];
+  const secondaryTitle = getMovieOriginalTitle(item);
+  const genres = getMovieGenres(item).slice(0, 2);
 
   const parts = [
     secondaryTitle,
     genres.length ? genres.join(", ") : "",
-    cast.length ? cast.join(", ") : "",
   ].filter(Boolean);
 
   return parts.join(" · ");
@@ -207,7 +50,7 @@ function getTitleMetaLine(item) {
 
 export default function Table({ newItems = [] }) {
   const [search, setSearch] = useState("");
-  const [searchMode, setSearchMode] = useState("strict");
+  const [searchMode, setSearchMode] = useState("extended");
   const [quickFilter, setQuickFilter] = useState("all");
   const [sortKey, setSortKey] = useState("watchTime");
   const [sortDirection, setSortDirection] = useState("desc");
@@ -267,14 +110,19 @@ export default function Table({ newItems = [] }) {
       let aValue = a?.[sortKey];
       let bValue = b?.[sortKey];
 
-      if (sortKey === "title" || sortKey === "director") {
-        aValue = String(aValue || "").toLowerCase();
-        bValue = String(bValue || "").toLowerCase();
+      if (sortKey === "title") {
+        aValue = normalizeSearchText(getMovieTitle(a));
+        bValue = normalizeSearchText(getMovieTitle(b));
+      }
+
+      if (sortKey === "director") {
+        aValue = normalizeSearchText(getMovieDirector(a));
+        bValue = normalizeSearchText(getMovieDirector(b));
       }
 
       if (sortKey === "year") {
-        aValue = Number(getTmdbYear(a));
-        bValue = Number(getTmdbYear(b));
+        aValue = Number(getMovieYear(a));
+        bValue = Number(getMovieYear(b));
 
         aValue = Number.isNaN(aValue) ? -Infinity : aValue;
         bValue = Number.isNaN(bValue) ? -Infinity : bValue;
@@ -299,6 +147,7 @@ export default function Table({ newItems = [] }) {
 
       if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
       if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
+
       return 0;
     });
 
@@ -343,7 +192,7 @@ export default function Table({ newItems = [] }) {
           placeholder={
             searchMode === "extended"
               ? "Extended search: title, RU title, cast, genre, comment..."
-              : "Strict search: title, director, year, IMDb..."
+              : "Exact search: title, director, year, IMDb..."
           }
           value={search}
           onChange={handleSearchChange}
@@ -361,18 +210,18 @@ export default function Table({ newItems = [] }) {
           <SegmentedControl>
             <SegmentButton
               type="button"
-              $active={searchMode === "strict"}
-              onClick={() => handleSearchModeChange("strict")}
-            >
-              Strict
-            </SegmentButton>
-
-            <SegmentButton
-              type="button"
               $active={searchMode === "extended"}
               onClick={() => handleSearchModeChange("extended")}
             >
               Extended
+            </SegmentButton>
+
+            <SegmentButton
+              type="button"
+              $active={searchMode === "strict"}
+              onClick={() => handleSearchModeChange("strict")}
+            >
+              Exact
             </SegmentButton>
           </SegmentedControl>
         </ToolbarGroup>
@@ -429,7 +278,7 @@ export default function Table({ newItems = [] }) {
                 <TableRow key={item.id}>
                   <TitleCell>
                     <MovieLink href={`/movies/${item.id}`}>
-                      {item.title || "—"}
+                      {getMovieTitle(item)}
                     </MovieLink>
 
                     {titleMetaLine && (
@@ -437,8 +286,8 @@ export default function Table({ newItems = [] }) {
                     )}
                   </TitleCell>
 
-                  <td>{item.director || "—"}</td>
-                  <td>{getTmdbYear(item)}</td>
+                  <td>{getMovieDirector(item)}</td>
+                  <td>{getMovieYear(item)}</td>
                   <td>{renderRating(item.rating)}</td>
                   <td>{item.watchTime || "—"}</td>
                 </TableRow>

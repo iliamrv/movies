@@ -23,22 +23,22 @@ export default function Page() {
     fetchMovies();
   }, []);
 
-const fetchMovies = async () => {
-  setIsLoading(true);
+  const fetchMovies = async () => {
+    setIsLoading(true);
 
-  const { data, error } = await getWatchedMovies(20);
+    const { data, error } = await getWatchedMovies(20);
 
-  if (!error && data) {
-    const enriched = data.map((movie) => ({
-      ...movie,
-      posterError: false,
-    }));
+    if (!error && data) {
+      const enriched = data.map((movie) => ({
+        ...movie,
+        posterError: false,
+      }));
 
-    setMovies(enriched);
-  }
+      setMovies(enriched);
+    }
 
-  setIsLoading(false);
-};
+    setIsLoading(false);
+  };
 
   function markPosterError(id) {
     setMovies((prev) =>
@@ -62,9 +62,9 @@ const fetchMovies = async () => {
         </TitleWrap>
 
         <Controls>
-          <Button type="button" onClick={() => router.push("/library")}>
+          <Button type="button" onClick={() => router.push("/")}>
             <Table2 size={16} />
-            Open full library
+            Back to library
           </Button>
 
           <Reload onClick={fetchMovies} type="button">
@@ -79,14 +79,14 @@ const fetchMovies = async () => {
       ) : (
         <Grid>
           {movies.map((item) => (
-       <MovieCard
-  key={item.id}
-  item={{
-    ...item,
-    onPosterError: () => markPosterError(item.id),
-  }}
-  showActions={false}
-/>
+            <MovieCard
+              key={item.id}
+              item={{
+                ...item,
+                onPosterError: () => markPosterError(item.id),
+              }}
+              showActions={false}
+            />
           ))}
         </Grid>
       )}

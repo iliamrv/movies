@@ -7,6 +7,20 @@ import { Edit3, Trash2, ArrowLeft, Film, Database } from "lucide-react";
 import { StyledButtons, Button } from "../../styles/globalStyles";
 import { getMovieById, deleteMovieById } from "../../src/api/movies";
 
+import {
+  getMoviePoster,
+  getMovieTitle,
+  getMovieOriginalTitle,
+  getMovieDirector,
+  getMovieGenres,
+  getMovieDescription,
+  getMovieRuntime,
+  getMovieYear,
+  getImdbRating,
+  getRottenTomatoesRating,
+  getMovieCast,
+} from "../../src/utils/movieUtils";
+
 export default function MovieDetails() {
   const router = useRouter();
   const { id } = router.query;
@@ -29,6 +43,7 @@ export default function MovieDetails() {
 
     try {
       const { data, error } = await getMovieById(movieId);
+
       if (error) throw error;
 
       let finalMovie = data;
@@ -93,90 +108,16 @@ export default function MovieDetails() {
     }
   }
 
-  const tmdbMeta = movie?.external_meta?.tmdb;
-
-  function getPosterSrc() {
-    return movie?.external_meta?.tmdb?.posterUrl || movie?.Poster || "";
-  }
-
-  function getDisplayTitle() {
-    return tmdbMeta?.titles?.ru || movie?.title || "";
-  }
-
-  function getOriginalTitle() {
-    const original =
-      tmdbMeta?.titles?.original ||
-      tmdbMeta?.titles?.en ||
-      movie?.title ||
-      "";
-
-    const display = getDisplayTitle();
-
-    if (!original || original === display) return "";
-    return original;
-  }
-
-  function getDirector() {
-    if (Array.isArray(tmdbMeta?.directors) && tmdbMeta.directors.length > 0) {
-      return tmdbMeta.directors
-        .map((director) => director.name)
-        .filter(Boolean)
-        .join(", ");
-    }
-
-    return movie?.director || movie?.Director || "—";
-  }
-
-  function getGenres() {
-    if (Array.isArray(tmdbMeta?.genres) && tmdbMeta.genres.length > 0) {
-      return tmdbMeta.genres.join(", ");
-    }
-
-    return movie?.Genre || "—";
-  }
-
-  function getDescription() {
-    return (
-      tmdbMeta?.overview?.ru ||
-      tmdbMeta?.overview?.en ||
-      (movie?.Plot !== "N/A" ? movie?.Plot : "") ||
-      ""
-    );
-  }
-
-  function getImdbRating() {
-    if (!movie?.imdbRating || movie.imdbRating === "N/A") return "";
-    return movie.imdbRating;
-  }
-
-  function getRottenRating() {
-    if (!Array.isArray(movie?.Ratings)) return "";
-
-    const rating = movie.Ratings.find(
-      (item) => item.Source === "Rotten Tomatoes"
-    );
-
-    return rating?.Value || "";
-  }
-
-  function getRuntime() {
-    if (tmdbMeta?.runtime) return `${tmdbMeta.runtime} min`;
-    if (movie?.Runtime && movie.Runtime !== "N/A") return movie.Runtime;
-    return "";
-  }
-
-  function getReleaseDate() {
-    return tmdbMeta?.releaseDate || movie?.Released || "";
-  }
-
-  const posterSrc = getPosterSrc();
-  const displayTitle = getDisplayTitle();
-  const originalTitle = getOriginalTitle();
-  const description = getDescription();
-  const imdbRating = getImdbRating();
-  const rottenRating = getRottenRating();
-
-  const cast = Array.isArray(tmdbMeta?.cast) ? tmdbMeta.cast.slice(0, 5) : [];
+  const posterSrc = getMoviePoster(movie);
+  const displayTitle = getMovieTitle(movie);
+  const originalTitle = getMovieOriginalTitle(movie);
+  const description = getMovieDescription(movie);
+  const imdbRating = getImdbRating(movie);
+  const rottenRating = getRottenTomatoesRating(movie);
+  const cast = getMovieCast(movie, 5);
+  const genres = getMovieGenres(movie).slice(0, 3);
+  const runtime = getMovieRuntime(movie);
+  const movieYear = getMovieYear(movie);
 
   const watchDates = Array.isArray(movie?.watch_dates) ? movie.watch_dates : [];
 
@@ -206,27 +147,23 @@ export default function MovieDetails() {
             <InfoColumn>
               <MovieTitle>
                 {displayTitle}
-                {movie.year ? ` (${movie.year})` : ""}
+                {movieYear !== "—" ? ` (${movieYear})` : ""}
               </MovieTitle>
 
               {originalTitle && <OriginalTitle>{originalTitle}</OriginalTitle>}
 
               <MainMeta>
-                <span>{getDirector()}</span>
-                {getReleaseDate() && <span>{getReleaseDate()}</span>}
-                {getRuntime() && <span>{getRuntime()}</span>}
+                <span>{getMovieDirector(movie)}</span>
+                {runtime && <span>{runtime}</span>}
               </MainMeta>
 
-              <TagList>
-                {getGenres()
-                  .split(",")
-                  .map((genre) => genre.trim())
-                  .filter(Boolean)
-                  .slice(0, 3)
-                  .map((genre) => (
+              {genres.length > 0 && (
+                <TagList>
+                  {genres.map((genre) => (
                     <Tag key={genre}>{genre}</Tag>
                   ))}
-              </TagList>
+                </TagList>
+              )}
 
               <RatingsLine>
                 {imdbRating && <RatingPill>IMDb {imdbRating}</RatingPill>}
@@ -247,6 +184,15 @@ export default function MovieDetails() {
                   <Database size={16} />
                   {isFetchingTmdb ? "Fetching..." : "Fetch TMDb"}
                 </Button>
+
+                {movie.external_meta?.sources?.tmdb?.fetchedAt && (
+                  <FetchedText>
+                    TMDb:{" "}
+                    {new Date(
+                      movie.external_meta.sources.tmdb.fetchedAt
+                    ).toLocaleDateString()}
+                  </FetchedText>
+                )}
 
                 {tmdbError && <TmdbErrorText>{tmdbError}</TmdbErrorText>}
               </DevActions>
@@ -433,6 +379,11 @@ const DevActions = styled.div`
   margin-top: 18px;
   flex-wrap: wrap;
   opacity: 0.75;
+`;
+
+const FetchedText = styled.span`
+  color: #6b7280;
+  font-size: 0.9rem;
 `;
 
 const TmdbErrorText = styled.div`

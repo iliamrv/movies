@@ -34,18 +34,12 @@ export default function LibraryPage() {
     <PageWrap>
       <Header>
         <TitleWrap>
-          <PageTitle>
-            <Table2 size={20} />
-            Full Library
-          </PageTitle>
-          <PageText>
-            Full watched database in table view with search and old data
-          </PageText>
+          <PageTitle>Movie Library</PageTitle>
+          <PageText>Search, filter, and manage your watched movies</PageText>
         </TitleWrap>
 
-        <Button type="button" onClick={() => router.push("/")}>
-          <ArrowLeft size={16} />
-          Back to cards
+        <Button type="button" onClick={() => router.push("/recent")}>
+          Recently watched
         </Button>
       </Header>
 

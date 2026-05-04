@@ -1,9 +1,24 @@
 import Link from "next/link";
-import { Film, Plus, Clock3, BarChart3 } from "lucide-react";
+import { useRouter } from "next/router";
+import {
+  Film,
+  Plus,
+  Clock3,
+  BarChart3,
+  Library,
+  Images,
+} from "lucide-react";
 import styled from "styled-components";
 import { Button, StyledButtons } from "../styles/globalStyles";
 
 function Navbar() {
+  const router = useRouter();
+
+  function isActive(path) {
+    if (path === "/") return router.pathname === "/";
+    return router.pathname.startsWith(path);
+  }
+
   return (
     <HeaderOuter>
       <HeaderInner>
@@ -15,6 +30,42 @@ function Navbar() {
         </Link>
 
         <StyledButtons>
+          <Link href="/" passHref legacyBehavior>
+            <a>
+              <Button as="span" $secondary={!isActive("/")}>
+                <Library size={16} />
+                Library
+              </Button>
+            </a>
+          </Link>
+
+          <Link href="/recent" passHref legacyBehavior>
+            <a>
+              <Button as="span" $secondary={!isActive("/recent")}>
+                <Images size={16} />
+                Recent
+              </Button>
+            </a>
+          </Link>
+
+          <Link href="/towatch" passHref legacyBehavior>
+            <a>
+              <Button as="span" $secondary={!isActive("/towatch")}>
+                <Clock3 size={16} />
+                To watch
+              </Button>
+            </a>
+          </Link>
+
+          <Link href="/stats" passHref legacyBehavior>
+            <a>
+              <Button as="span" $secondary={!isActive("/stats")}>
+                <BarChart3 size={16} />
+                Stats
+              </Button>
+            </a>
+          </Link>
+
           <Link href="/createmovie" passHref legacyBehavior>
             <a>
               <Button as="span">
@@ -24,23 +75,8 @@ function Navbar() {
             </a>
           </Link>
 
-          <Link href="/towatch" passHref legacyBehavior>
-            <a>
-              <Button as="span" $secondary>
-                <Clock3 size={16} />
-                To watch
-              </Button>
-            </a>
-          </Link>
 
-          <Link href="/stats" passHref legacyBehavior>
-            <a>
-              <Button as="span" $secondary>
-                <BarChart3 size={16} />
-                Stats
-              </Button>
-            </a>
-          </Link>
+
         </StyledButtons>
       </HeaderInner>
     </HeaderOuter>
@@ -48,6 +84,8 @@ function Navbar() {
 }
 
 export default Navbar;
+
+/* ---------------- styled ---------------- */
 
 const HeaderOuter = styled.header`
   position: sticky;
