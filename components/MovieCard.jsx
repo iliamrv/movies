@@ -53,26 +53,15 @@ export default function MovieCard({
   }
 
 function getPosterSrc() {
-  const tmdbPoster = item.external_meta?.tmdb?.posterUrl;
-  const omdbPoster = item.Poster;
+  const candidates = [
+    item.external_meta?.tmdb?.posterUrl,
+    item.external_meta?.tmdb?.poster_url,
+    item.poster_url,
+    item.poster,
+    item.Poster,
+  ];
 
-  // 1. TMDb (основной источник)
-  if (
-    isValidPosterUrl(tmdbPoster) &&
-    failedPosterSrc !== tmdbPoster
-  ) {
-    return tmdbPoster;
-  }
-
-  // 2. fallback на OMDb
-  if (
-    isValidPosterUrl(omdbPoster) &&
-    failedPosterSrc !== omdbPoster
-  ) {
-    return omdbPoster;
-  }
-
-  return "";
+  return candidates.find(isValidPosterUrl) || "";
 }
 
   function getPrimaryGenre() {
@@ -159,6 +148,16 @@ function getPosterSrc() {
   const displayTitle = getDisplayTitle();
   const originalTitle = getOriginalTitle();
   const displayDirector = getDisplayDirector();
+
+  console.log("CARD DEBUG:", {
+  id: item.id,
+  title: item.title,
+  Poster: item.Poster,
+  poster_url: item.poster_url,
+  tmdbPoster: item.external_meta?.tmdb?.posterUrl,
+  external_meta: item.external_meta,
+  posterSrc,
+});
 
   return (
     <Card>
@@ -261,18 +260,16 @@ const Card = styled.div`
 
 const PosterLink = styled(Link)`
   display: block;
-  height: 300px;
+  aspect-ratio: 2 / 3;
   background: #f3f4f6;
   cursor: pointer;
-  text-decoration: none;
-  color: inherit;
 `;
 
 const PosterImage = styled.img`
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: block;
+  object-position: center;
 `;
 
 const Placeholder = styled.div`

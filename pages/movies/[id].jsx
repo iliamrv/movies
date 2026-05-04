@@ -1,6 +1,5 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import styled from "styled-components";
 import { fetchOmdbById, mergeMovieData } from "../../src/api/omdb";
 
@@ -8,33 +7,44 @@ import { Edit3, Trash2, ArrowLeft, Film, Database } from "lucide-react";
 import { StyledButtons, Button } from "../../styles/globalStyles";
 import { getMovieById, deleteMovieById } from "../../src/api/movies";
 
-
 export default function MovieDetails() {
   const router = useRouter();
   const { id } = router.query;
 
   const [movie, setMovie] = useState(null);
-  const [posterFailed, setPosterFailed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingTmdb, setIsFetchingTmdb] = useState(false);
   const [error, setError] = useState("");
   const [tmdbError, setTmdbError] = useState("");
 
-  const handleEdit = () => {
-    router.push(`/edit-movie/${id}`);
-  };
+  useEffect(() => {
+    if (!id) return;
+    fetchMovie(id);
+  }, [id]);
 
-  const handleDelete = async (e) => {
-    e.preventDefault();
+  async function fetchMovie(movieId) {
+    setIsLoading(true);
+    setError("");
+    setTmdbError("");
 
-    const { error } = await deleteMovieById(id);
+    try {
+      const { data, error } = await getMovieById(movieId);
+      if (error) throw error;
 
-    if (error) {
-      setError("Delete failed");
-    } else {
-      router.push("/");
+      let finalMovie = data;
+
+      if (data?.imdb) {
+        const imdbData = await fetchOmdbById(data.imdb);
+        finalMovie = mergeMovieData(data, imdbData);
+      }
+
+      setMovie(finalMovie);
+    } catch (err) {
+      setError("Failed to fetch movie details: " + err.message);
     }
-  };
+
+    setIsLoading(false);
+  }
 
   async function handleFetchTmdbMeta() {
     if (!movie?.id) return;
@@ -63,8 +73,6 @@ export default function MovieDetails() {
         ...prev,
         external_meta: data.external_meta,
       }));
-
-      setPosterFailed(false);
     } catch (error) {
       console.error("Fetch TMDb meta error:", error);
       setTmdbError(error.message || "Failed to fetch TMDb meta");
@@ -73,80 +81,104 @@ export default function MovieDetails() {
     }
   }
 
-  const displayRatings = (ratings) => {
-    if (!ratings) return null;
+  async function handleDelete(e) {
+    e.preventDefault();
 
-    return ratings.map((rating, index) => (
-      <RatingItem key={index}>
-        <span>{rating.Source}</span>
-        <strong>{rating.Value}</strong>
-      </RatingItem>
-    ));
-  };
+    const { error } = await deleteMovieById(id);
 
-  useEffect(() => {
-    if (!id) return;
-    fetchMovie(id);
-  }, [id]);
-
-const fetchMovie = async (movieId) => {
-  setIsLoading(true);
-  setError("");
-  setTmdbError("");
-  setPosterFailed(false);
-
-  try {
-    const { data, error } = await getMovieById(movieId);
-
-    if (error) throw error;
-
-    let finalMovie = data;
-
-    // OMDb нужен только для внешних рейтингов: IMDb, Rotten Tomatoes, Metacritic
-    if (data?.imdb) {
-      const imdbData = await fetchOmdbById(data.imdb);
-      finalMovie = mergeMovieData(data, imdbData);
+    if (error) {
+      setError("Delete failed");
+    } else {
+      router.push("/");
     }
-
-    setMovie(finalMovie);
-  } catch (err) {
-    setError("Failed to fetch movie details: " + err.message);
   }
-
-  setIsLoading(false);
-};
-
-  function isValidPosterUrl(value) {
-    if (!value || value === "N/A") return false;
-    return /^https?:\/\//i.test(String(value));
-  }
-
-function getPosterSrc() {
-  const tmdbPoster = movie?.external_meta?.tmdb?.posterUrl;
-  const omdbPoster = movie?.Poster;
-
-  if (!posterFailed && isValidPosterUrl(tmdbPoster)) {
-    return tmdbPoster;
-  }
-
-  if (!posterFailed && isValidPosterUrl(omdbPoster)) {
-    return omdbPoster;
-  }
-
-  return "";
-}
-
-  const watchDates = Array.isArray(movie?.watch_dates)
-    ? movie.watch_dates
-    : [];
-
-  const sortedWatchDates = [...watchDates].sort((a, b) =>
-    a < b ? 1 : -1
-  );
 
   const tmdbMeta = movie?.external_meta?.tmdb;
-  const posterSrc = getPosterSrc();
 
+  function getPosterSrc() {
+    return movie?.external_meta?.tmdb?.posterUrl || movie?.Poster || "";
+  }
+
+  function getDisplayTitle() {
+    return tmdbMeta?.titles?.ru || movie?.title || "";
+  }
+
+  function getOriginalTitle() {
+    const original =
+      tmdbMeta?.titles?.original ||
+      tmdbMeta?.titles?.en ||
+      movie?.title ||
+      "";
+
+    const display = getDisplayTitle();
+
+    if (!original || original === display) return "";
+    return original;
+  }
+
+  function getDirector() {
+    if (Array.isArray(tmdbMeta?.directors) && tmdbMeta.directors.length > 0) {
+      return tmdbMeta.directors
+        .map((director) => director.name)
+        .filter(Boolean)
+        .join(", ");
+    }
+
+    return movie?.director || movie?.Director || "—";
+  }
+
+  function getGenres() {
+    if (Array.isArray(tmdbMeta?.genres) && tmdbMeta.genres.length > 0) {
+      return tmdbMeta.genres.join(", ");
+    }
+
+    return movie?.Genre || "—";
+  }
+
+  function getDescription() {
+    return (
+      tmdbMeta?.overview?.ru ||
+      tmdbMeta?.overview?.en ||
+      (movie?.Plot !== "N/A" ? movie?.Plot : "") ||
+      ""
+    );
+  }
+
+  function getImdbRating() {
+    if (!movie?.imdbRating || movie.imdbRating === "N/A") return "";
+    return movie.imdbRating;
+  }
+
+  function getRottenRating() {
+    if (!Array.isArray(movie?.Ratings)) return "";
+
+    const rating = movie.Ratings.find(
+      (item) => item.Source === "Rotten Tomatoes"
+    );
+
+    return rating?.Value || "";
+  }
+
+  function getRuntime() {
+    if (tmdbMeta?.runtime) return `${tmdbMeta.runtime} min`;
+    if (movie?.Runtime && movie.Runtime !== "N/A") return movie.Runtime;
+    return "";
+  }
+
+  function getReleaseDate() {
+    return tmdbMeta?.releaseDate || movie?.Released || "";
+  }
+
+  const posterSrc = getPosterSrc();
+  const displayTitle = getDisplayTitle();
+  const originalTitle = getOriginalTitle();
+  const description = getDescription();
+  const imdbRating = getImdbRating();
+  const rottenRating = getRottenRating();
+
+  const cast = Array.isArray(tmdbMeta?.cast) ? tmdbMeta.cast.slice(0, 5) : [];
+
+  const watchDates = Array.isArray(movie?.watch_dates) ? movie.watch_dates : [];
 
   return (
     <PageWrap>
@@ -154,25 +186,13 @@ function getPosterSrc() {
         <StateText>Loading...</StateText>
       ) : movie ? (
         <ContentCard>
-          <TitleBlock>
-            <MovieTitle>
-              {movie.title}
-              {movie.year ? ` (${movie.year})` : ""}
-            </MovieTitle>
-          </TitleBlock>
-
           <TopSection>
             <PosterColumn>
               {posterSrc ? (
                 <PosterFrame>
-                  <Image
+                  <PosterImage
                     src={posterSrc}
-                    alt={movie.title || "Movie poster"}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 280px"
-                    style={{ objectFit: "cover" }}
-                    onError={() => setPosterFailed(true)}
-                    unoptimized
+                    alt={displayTitle || "Movie poster"}
                   />
                 </PosterFrame>
               ) : (
@@ -184,213 +204,88 @@ function getPosterSrc() {
             </PosterColumn>
 
             <InfoColumn>
-              <MetaGrid>
-                <MetaCard>
-                  <MetaLabel>Director</MetaLabel>
-                  <MetaValue>{movie.director || "—"}</MetaValue>
-                </MetaCard>
+              <MovieTitle>
+                {displayTitle}
+                {movie.year ? ` (${movie.year})` : ""}
+              </MovieTitle>
 
-            
+              {originalTitle && <OriginalTitle>{originalTitle}</OriginalTitle>}
 
-        
+              <MainMeta>
+                <span>{getDirector()}</span>
+                {getReleaseDate() && <span>{getReleaseDate()}</span>}
+                {getRuntime() && <span>{getRuntime()}</span>}
+              </MainMeta>
 
+              <TagList>
+                {getGenres()
+                  .split(",")
+                  .map((genre) => genre.trim())
+                  .filter(Boolean)
+                  .slice(0, 3)
+                  .map((genre) => (
+                    <Tag key={genre}>{genre}</Tag>
+                  ))}
+              </TagList>
 
-                <MetaCard>
-                  <MetaLabel>Genre</MetaLabel>
-                  <MetaValue>
-                    {movie.Genre ||
-                      (Array.isArray(tmdbMeta?.genres)
-                        ? tmdbMeta.genres.join(", ")
-                        : "") ||
-                      "—"}
-                  </MetaValue>
-                </MetaCard>
+              <RatingsLine>
+                {imdbRating && <RatingPill>IMDb {imdbRating}</RatingPill>}
+                {rottenRating && <RatingPill>RT {rottenRating}</RatingPill>}
+                {movie.rating !== null &&
+                  movie.rating !== undefined &&
+                  movie.rating !== "" && (
+                    <RatingPill>My {movie.rating}/10</RatingPill>
+                  )}
+              </RatingsLine>
 
-                <MetaCard>
-                  <MetaLabel>Watch Time</MetaLabel>
-                  <MetaValue>{movie.watchTime || "n/a"}</MetaValue>
-                </MetaCard>
-
-            <MetaCard>
-  <MetaLabel>My  Rating</MetaLabel>
-  <MetaValue>
-    {movie.rating !== null && movie.rating !== undefined && movie.rating !== ""
-      ? `${movie.rating}/10`
-      : "—"}
-  </MetaValue>
-</MetaCard>
-              </MetaGrid>
-
-           
-
-              <TmdbActions>
+              <DevActions>
                 <Button
                   onClick={handleFetchTmdbMeta}
                   type="button"
                   disabled={isFetchingTmdb || !movie.imdb}
-                  title={
-                    !movie.imdb
-                      ? "Movie has no IMDb ID"
-                      : "Fetch TMDb metadata"
-                  }
                 >
                   <Database size={16} />
-                  {isFetchingTmdb ? "Fetching TMDb..." : "Fetch TMDb meta"}
+                  {isFetchingTmdb ? "Fetching..." : "Fetch TMDb"}
                 </Button>
 
-                {movie.external_meta?.sources?.tmdb?.fetchedAt && (
-                  <FetchedText>
-                    TMDb fetched:{" "}
-                    {new Date(
-                      movie.external_meta.sources.tmdb.fetchedAt
-                    ).toLocaleDateString()}
-                  </FetchedText>
-                )}
-              </TmdbActions>
-
-              {tmdbError && <TmdbErrorText>{tmdbError}</TmdbErrorText>}
+                {tmdbError && <TmdbErrorText>{tmdbError}</TmdbErrorText>}
+              </DevActions>
             </InfoColumn>
           </TopSection>
 
-          {movie.Plot && movie.Plot !== "N/A" && (
+          {description && (
             <Section>
               <SectionTitle>Description</SectionTitle>
-              <DescriptionBox>{movie.Plot}</DescriptionBox>
+              <DescriptionBox>{description}</DescriptionBox>
             </Section>
           )}
 
-          {tmdbMeta && (
+          {cast.length > 0 && (
             <Section>
-              <SectionTitle>TMDb Meta</SectionTitle>
-
-              <TmdbGrid>
-                <MetaCard>
-                  <MetaLabel>RU title</MetaLabel>
-                  <MetaValue>{tmdbMeta.titles?.ru || "—"}</MetaValue>
-                </MetaCard>
-
-                <MetaCard>
-                  <MetaLabel>EN title</MetaLabel>
-                  <MetaValue>{tmdbMeta.titles?.en || "—"}</MetaValue>
-                </MetaCard>
-
-                <MetaCard>
-                  <MetaLabel>Original title</MetaLabel>
-                  <MetaValue>{tmdbMeta.titles?.original || "—"}</MetaValue>
-                </MetaCard>
-
-                <MetaCard>
-                  <MetaLabel>TMDb ID</MetaLabel>
-                  <MetaValue>{tmdbMeta.id || "—"}</MetaValue>
-                </MetaCard>
-
-                <MetaCard>
-                  <MetaLabel>Release date</MetaLabel>
-                  <MetaValue>{tmdbMeta.releaseDate || "—"}</MetaValue>
-                </MetaCard>
-
-                <MetaCard>
-                  <MetaLabel>Runtime</MetaLabel>
-                  <MetaValue>
-                    {tmdbMeta.runtime ? `${tmdbMeta.runtime} min` : "—"}
-                  </MetaValue>
-                </MetaCard>
-              </TmdbGrid>
-
-              {tmdbMeta.posterUrl && (
-                <TmdbSubsection>
-                  <SmallTitle>TMDb poster</SmallTitle>
-                  <SmallText>{tmdbMeta.posterUrl}</SmallText>
-                </TmdbSubsection>
-              )}
-
-              {tmdbMeta.overview?.ru && (
-                <TmdbSubsection>
-                  <SmallTitle>Russian overview</SmallTitle>
-                  <DescriptionBox>{tmdbMeta.overview.ru}</DescriptionBox>
-                </TmdbSubsection>
-              )}
-
-              {Array.isArray(tmdbMeta.genres) && tmdbMeta.genres.length > 0 && (
-                <TmdbSubsection>
-                  <SmallTitle>Genres</SmallTitle>
-                  <TagList>
-                    {tmdbMeta.genres.map((genre) => (
-                      <Tag key={genre}>{genre}</Tag>
-                    ))}
-                  </TagList>
-                </TmdbSubsection>
-              )}
-
-              {Array.isArray(tmdbMeta.directors) &&
-                tmdbMeta.directors.length > 0 && (
-                  <TmdbSubsection>
-                    <SmallTitle>Directors</SmallTitle>
-                    <TagList>
-                      {tmdbMeta.directors.map((director) => (
-                        <Tag key={director.id || director.name}>
-                          {director.name}
-                        </Tag>
-                      ))}
-                    </TagList>
-                  </TmdbSubsection>
-                )}
-
-              {Array.isArray(tmdbMeta.cast) && tmdbMeta.cast.length > 0 && (
-                <TmdbSubsection>
-                  <SmallTitle>Cast</SmallTitle>
-                  <TagList>
-                    {tmdbMeta.cast.map((person) => (
-                      <Tag key={person.id || person.name}>
-                        {person.name}
-                        {person.character ? ` — ${person.character}` : ""}
-                      </Tag>
-                    ))}
-                  </TagList>
-                </TmdbSubsection>
-              )}
-
-              {Array.isArray(tmdbMeta.ruAlternativeTitles) &&
-                tmdbMeta.ruAlternativeTitles.length > 0 && (
-                  <TmdbSubsection>
-                    <SmallTitle>RU alternative titles</SmallTitle>
-                    <TagList>
-                      {tmdbMeta.ruAlternativeTitles.map((title) => (
-                        <Tag key={title}>{title}</Tag>
-                      ))}
-                    </TagList>
-                  </TmdbSubsection>
-                )}
+              <SectionTitle>Cast</SectionTitle>
+              <TagList>
+                {cast.map((person) => (
+                  <Tag key={person.id || person.name}>
+                    {person.name}
+                    {person.character ? ` — ${person.character}` : ""}
+                  </Tag>
+                ))}
+              </TagList>
             </Section>
           )}
 
-          <Section>
-            <SectionTitle>Ratings</SectionTitle>
-            {movie.Ratings ? (
-              <RatingsList>{displayRatings(movie.Ratings)}</RatingsList>
-            ) : (
-              <MutedText>No ratings available.</MutedText>
-            )}
-          </Section>
-
-          <Section>
-            <SectionTop>
-              <SectionTitle>
-                Watch history{" "}
-                {watchDates.length > 0 ? `(${watchDates.length})` : ""}
-              </SectionTitle>
-            </SectionTop>
-
-            {watchDates.length > 0 ? (
+          {watchDates.length > 0 && (
+            <Section>
+              <SectionTitle>Watch history ({watchDates.length})</SectionTitle>
               <HistoryList>
-                {sortedWatchDates.map((date, index) => (
-                  <li key={index}>{date}</li>
-                ))}
+                {[...watchDates]
+                  .sort((a, b) => (a < b ? 1 : -1))
+                  .map((date, index) => (
+                    <li key={index}>{date}</li>
+                  ))}
               </HistoryList>
-            ) : (
-              <MutedText>No rewatches yet</MutedText>
-            )}
-          </Section>
+            </Section>
+          )}
 
           <Section>
             <SectionTitle>Comment</SectionTitle>
@@ -403,7 +298,7 @@ function getPosterSrc() {
 
           <Section>
             <StyledButtons>
-              <Button onClick={handleEdit} type="button">
+              <Button onClick={() => router.push(`/edit-movie/${id}`)} type="button">
                 <Edit3 size={16} /> Edit
               </Button>
 
@@ -440,24 +335,11 @@ const ContentCard = styled.div`
   box-shadow: 0 10px 30px rgba(17, 24, 39, 0.05);
 `;
 
-const TitleBlock = styled.div`
-  margin-bottom: 18px;
-`;
-
-const MovieTitle = styled.h1`
-  margin: 0;
-  line-height: 1.2;
-  color: #111827;
-  font-size: clamp(1.9rem, 3vw, 2.6rem);
-  word-break: break-word;
-`;
-
 const TopSection = styled.div`
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
-  gap: 22px;
+  gap: 24px;
   align-items: start;
-  margin-bottom: 22px;
 
   @media (max-width: 760px) {
     grid-template-columns: 1fr;
@@ -467,12 +349,19 @@ const TopSection = styled.div`
 const PosterColumn = styled.div``;
 
 const PosterFrame = styled.div`
-  position: relative;
   width: 100%;
   aspect-ratio: 2 / 3;
   overflow: hidden;
   border-radius: 14px;
   background: #f3f4f6;
+`;
+
+const PosterImage = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
 `;
 
 const PosterPlaceholder = styled.div`
@@ -490,123 +379,75 @@ const PosterPlaceholder = styled.div`
 
 const InfoColumn = styled.div``;
 
-const MetaGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-
-  @media (max-width: 640px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const TmdbGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-
-  @media (max-width: 760px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const MetaCard = styled.div`
-  padding: 14px 16px;
-  border: 1px solid #eef2f7;
-  border-radius: 14px;
-  background: #fcfcfd;
-`;
-
-const MetaLabel = styled.div`
-  margin-bottom: 6px;
-  color: #6b7280;
-  font-size: 0.9rem;
-`;
-
-const MetaValue = styled.div`
+const MovieTitle = styled.h1`
+  margin: 0;
+  line-height: 1.15;
   color: #111827;
-  line-height: 1.45;
+  font-size: clamp(1.9rem, 3vw, 2.6rem);
   word-break: break-word;
 `;
 
-const TmdbActions = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 14px;
-  flex-wrap: wrap;
+const OriginalTitle = styled.div`
+  margin-top: 6px;
+  color: #6b7280;
+  font-size: 1rem;
 `;
 
-const FetchedText = styled.span`
-  color: #6b7280;
-  font-size: 0.9rem;
+const MainMeta = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 14px;
+  color: #4b5563;
+  font-size: 0.95rem;
+
+  span:not(:last-child)::after {
+    content: "•";
+    margin-left: 14px;
+    color: #9ca3af;
+  }
+`;
+
+const RatingsLine = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+`;
+
+const RatingPill = styled.span`
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #111827;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+`;
+
+const DevActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+  opacity: 0.75;
 `;
 
 const TmdbErrorText = styled.div`
-  margin-top: 10px;
   color: #b91c1c;
   font-size: 0.9rem;
 `;
 
 const Section = styled.div`
-  margin-top: 22px;
-`;
-
-const SectionTop = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  margin-top: 24px;
 `;
 
 const SectionTitle = styled.h2`
-  margin: 0 0 12px;
+  margin: 0 0 10px;
   font-size: 1.05rem;
   color: #111827;
-`;
-
-const SmallTitle = styled.h3`
-  margin: 0 0 8px;
-  font-size: 0.95rem;
-  color: #374151;
-`;
-
-const SmallText = styled.div`
-  color: #64748b;
-  font-size: 0.85rem;
-  line-height: 1.45;
-  word-break: break-all;
-`;
-
-const TmdbSubsection = styled.div`
-  margin-top: 14px;
-`;
-
-const RatingsList = styled.div`
-  display: grid;
-  gap: 10px;
-`;
-
-const RatingItem = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
-  border: 1px solid #eef2f7;
-  border-radius: 12px;
-  background: #fcfcfd;
-  color: #374151;
-`;
-
-const HistoryList = styled.ul`
-  margin: 0;
-  padding-left: 18px;
-
-  li {
-    margin-bottom: 6px;
-    color: #374151;
-  }
 `;
 
 const DescriptionBox = styled.div`
@@ -636,6 +477,7 @@ const TagList = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-top: 12px;
 `;
 
 const Tag = styled.span`
@@ -647,6 +489,16 @@ const Tag = styled.span`
   color: #374151;
   font-size: 0.86rem;
   line-height: 1.25;
+`;
+
+const HistoryList = styled.ul`
+  margin: 0;
+  padding-left: 18px;
+
+  li {
+    margin-bottom: 6px;
+    color: #374151;
+  }
 `;
 
 const MutedText = styled.p`
