@@ -47,3 +47,43 @@ export async function updateMoviePriority(id, priority) {
 		.eq("id", id);
 }
 
+
+export async function getWatchedMoviesPage({
+	page = 1,
+	pageSize = 25,
+	sortKey = "watchTime",
+	sortDirection = "desc",
+} = {}) {
+	const from = (page - 1) * pageSize;
+	const to = from + pageSize - 1;
+
+	const allowedSortKeys = ["title", "director", "year", "rating", "watchTime"];
+	const safeSortKey = allowedSortKeys.includes(sortKey) ? sortKey : "watchTime";
+
+	return supabase
+		.from(TABLE_NAME)
+		.select(
+			`
+      id,
+      title,
+      director,
+      year,
+      rating,
+      watchTime,
+      imdb,
+      comment,
+      external_meta
+    `,
+			{ count: "exact" }
+		)
+		.eq("watched_mark", true)
+		.order(safeSortKey, {
+			ascending: sortDirection === "asc",
+			nullsFirst: false,
+		})
+		.range(from, to);
+}
+
+export async function createMovie(payload) {
+	return supabase.from(TABLE_NAME).insert(payload).select().single();
+}

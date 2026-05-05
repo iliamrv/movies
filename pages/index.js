@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import styled from "styled-components";
-import { Table2, ArrowLeft } from "lucide-react";
 import { useRouter } from "next/router";
 
 import Loading from "./loading";
 import Table from "../components/Table";
 import { Button } from "../styles/globalStyles";
 import { getWatchedMovies } from "../src/api/movies";
+const CACHE_KEY = "moviebase_watched_movies_cache";
 
 export default function LibraryPage() {
   const router = useRouter();
@@ -14,21 +14,47 @@ export default function LibraryPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [movies, setMovies] = useState([]);
 
+
+  function loadCachedMovies() {
+    if (typeof window === "undefined") return;
+
+    const cached = localStorage.getItem(CACHE_KEY);
+
+    if (!cached) return;
+
+    try {
+      const parsed = JSON.parse(cached);
+
+      if (Array.isArray(parsed)) {
+        setMovies(parsed);
+      }
+    } catch (error) {
+      console.warn("Failed to read movies cache:", error);
+    }
+  }
+
   useEffect(() => {
+    loadCachedMovies();
     fetchMovies();
   }, []);
 
-  const fetchMovies = async () => {
+  async function fetchMovies() {
     setIsLoading(true);
 
     const { data, error } = await getWatchedMovies(5000);
 
-    if (!error) {
-      setMovies(data || []);
+    if (!error && data) {
+      setMovies(data);
+
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+      } catch (error) {
+        console.warn("Failed to save movies cache:", error);
+      }
     }
 
     setIsLoading(false);
-  };
+  }
 
   return (
     <PageWrap>
@@ -43,7 +69,17 @@ export default function LibraryPage() {
         </Button>
       </Header>
 
-      {isLoading ? <Loading /> : <Table newItems={movies} />}
+      {isLoading && movies.length === 0 ? (
+        <Loading />
+      ) : (
+        <TableArea $loading={isLoading}>
+          <Table newItems={movies} />
+
+          {isLoading && movies.length > 0 && (
+            <SmallStatus>Updating...</SmallStatus>
+          )}
+        </TableArea>
+      )}
     </PageWrap>
   );
 }
@@ -68,12 +104,29 @@ const TitleWrap = styled.div``;
 
 const PageTitle = styled.h1`
   margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
 `;
 
 const PageText = styled.p`
   color: #6b7280;
   margin-top: 6px;
+`;
+
+const TableArea = styled.div`
+  position: relative;
+  opacity: ${({ $loading }) => ($loading ? 0.75 : 1)};
+  transition: opacity 0.15s ease;
+`;
+
+const SmallStatus = styled.div`
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 5;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #111827;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  pointer-events: none;
 `;
