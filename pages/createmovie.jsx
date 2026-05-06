@@ -4,7 +4,7 @@ import styled from "styled-components";
 import { Button } from "../styles/globalStyles";
 import { CirclePlus } from "lucide-react";
 import { useRouter } from "next/router";
-import { clearWatchedMoviesCache } from "../src/utils/movieCache";
+
 
 export default function CreateMovie() {
   const router = useRouter();

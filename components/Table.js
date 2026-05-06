@@ -2,21 +2,19 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import styled from "styled-components";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+
 import {
-  getStrictSearchText,
   getExtendedSearchText,
   applyQuickFilter,
 } from "../src/utils/movieSearchUtils";
 
 import {
   normalizeSearchText,
-
   getMovieTitle,
   getMovieOriginalTitle,
   getMovieDirector,
   getMovieGenres,
   getMovieYear,
-
 } from "../src/utils/movieUtils";
 
 const PAGE_SIZE = 25;
@@ -30,27 +28,19 @@ const QUICK_FILTERS = [
   { value: "tmdb_missing", label: "Missing TMDb" },
 ];
 
-
-
-
-
-
-
 function getTitleMetaLine(item) {
   const secondaryTitle = getMovieOriginalTitle(item);
   const genres = getMovieGenres(item).slice(0, 2);
 
-  const parts = [
-    secondaryTitle,
-    genres.length ? genres.join(", ") : "",
-  ].filter(Boolean);
+  const parts = [secondaryTitle, genres.length ? genres.join(", ") : ""].filter(
+    Boolean
+  );
 
   return parts.join(" · ");
 }
 
 export default function Table({ newItems = [] }) {
   const [search, setSearch] = useState("");
-  const [searchMode, setSearchMode] = useState("extended");
   const [quickFilter, setQuickFilter] = useState("all");
   const [sortKey, setSortKey] = useState("watchTime");
   const [sortDirection, setSortDirection] = useState("desc");
@@ -78,11 +68,6 @@ export default function Table({ newItems = [] }) {
     setPage(1);
   }
 
-  function handleSearchModeChange(mode) {
-    setSearchMode(mode);
-    setPage(1);
-  }
-
   function handleQuickFilterChange(filter) {
     setQuickFilter(filter);
     setPage(1);
@@ -95,10 +80,7 @@ export default function Table({ newItems = [] }) {
 
     if (query) {
       items = items.filter((item) => {
-        const searchText =
-          searchMode === "extended"
-            ? getExtendedSearchText(item)
-            : getStrictSearchText(item);
+        const searchText = getExtendedSearchText(item);
 
         return searchText.includes(query);
       });
@@ -152,7 +134,7 @@ export default function Table({ newItems = [] }) {
     });
 
     return items;
-  }, [newItems, search, searchMode, quickFilter, sortKey, sortDirection]);
+  }, [newItems, search, quickFilter, sortKey, sortDirection]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -160,6 +142,7 @@ export default function Table({ newItems = [] }) {
   const paginated = useMemo(() => {
     const start = (currentPage - 1) * PAGE_SIZE;
     const end = start + PAGE_SIZE;
+
     return filtered.slice(start, end);
   }, [filtered, currentPage]);
 
@@ -189,11 +172,7 @@ export default function Table({ newItems = [] }) {
     <Wrapper>
       <TopBar>
         <SearchInput
-          placeholder={
-            searchMode === "extended"
-              ? "Extended search: title, RU title, cast, genre, comment..."
-              : "Exact search: title, director, year, IMDb..."
-          }
+          placeholder="Search: title, RU title, cast, genre, comment..."
           value={search}
           onChange={handleSearchChange}
         />
@@ -204,28 +183,6 @@ export default function Table({ newItems = [] }) {
       </TopBar>
 
       <Toolbar>
-        <ToolbarGroup>
-          <ToolbarLabel>Search mode</ToolbarLabel>
-
-          <SegmentedControl>
-            <SegmentButton
-              type="button"
-              $active={searchMode === "extended"}
-              onClick={() => handleSearchModeChange("extended")}
-            >
-              Extended
-            </SegmentButton>
-
-            <SegmentButton
-              type="button"
-              $active={searchMode === "strict"}
-              onClick={() => handleSearchModeChange("strict")}
-            >
-              Exact
-            </SegmentButton>
-          </SegmentedControl>
-        </ToolbarGroup>
-
         <ToolbarGroup>
           <ToolbarLabel>Quick filters</ToolbarLabel>
 
@@ -293,6 +250,12 @@ export default function Table({ newItems = [] }) {
                 </TableRow>
               );
             })}
+
+            {paginated.length === 0 && (
+              <TableRow>
+                <EmptyCell colSpan={5}>No movies found.</EmptyCell>
+              </TableRow>
+            )}
           </tbody>
         </TableWrap>
       </TableContainer>
@@ -382,29 +345,6 @@ const ToolbarLabel = styled.div`
   font-size: 13px;
   font-weight: 600;
   min-width: 88px;
-`;
-
-const SegmentedControl = styled.div`
-  display: inline-flex;
-  padding: 3px;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #f8fafc;
-`;
-
-const SegmentButton = styled.button`
-  padding: 7px 11px;
-  border: 0;
-  border-radius: 9px;
-  background: ${({ $active }) => ($active ? "#111827" : "transparent")};
-  color: ${({ $active }) => ($active ? "#fff" : "#475569")};
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-
-  &:hover {
-    background: ${({ $active }) => ($active ? "#111827" : "#eef2f7")};
-  }
 `;
 
 const FilterChips = styled.div`
@@ -499,6 +439,12 @@ const TitleCell = styled.td`
   font-weight: 500;
   max-width: 380px;
   word-break: break-word;
+`;
+
+const EmptyCell = styled.td`
+  text-align: center;
+  color: #94a3b8;
+  padding: 24px 12px;
 `;
 
 const MovieLink = styled(Link)`

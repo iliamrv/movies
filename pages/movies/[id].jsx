@@ -5,7 +5,12 @@ import { fetchOmdbById, mergeMovieData } from "../../src/api/omdb";
 
 import { Edit3, Trash2, ArrowLeft, Film, Database } from "lucide-react";
 import { StyledButtons, Button } from "../../styles/globalStyles";
-import { getMovieById, deleteMovieById } from "../../src/api/movies";
+
+import {
+  getMovieById,
+  deleteMovieById,
+  updateMoviePriority,
+} from "../../src/api/movies";
 
 import {
   getMoviePoster,
@@ -28,6 +33,7 @@ export default function MovieDetails() {
   const [movie, setMovie] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingTmdb, setIsFetchingTmdb] = useState(false);
+  const [isUpdatingPriority, setIsUpdatingPriority] = useState(false);
   const [error, setError] = useState("");
   const [tmdbError, setTmdbError] = useState("");
 
@@ -96,6 +102,29 @@ export default function MovieDetails() {
     }
   }
 
+  async function handlePriorityChange(nextPriority) {
+    if (!movie?.id) return;
+
+    setIsUpdatingPriority(true);
+    setError("");
+
+    const { error } = await updateMoviePriority(movie.id, nextPriority);
+
+    if (error) {
+      console.error(error);
+      setError("Failed to update priority");
+      setIsUpdatingPriority(false);
+      return;
+    }
+
+    setMovie((prev) => ({
+      ...prev,
+      priority: nextPriority,
+    }));
+
+    setIsUpdatingPriority(false);
+  }
+
   async function handleDelete(e) {
     e.preventDefault();
 
@@ -120,6 +149,7 @@ export default function MovieDetails() {
   const movieYear = getMovieYear(movie);
 
   const watchDates = Array.isArray(movie?.watch_dates) ? movie.watch_dates : [];
+  const currentPriority = movie?.priority || "medium";
 
   return (
     <PageWrap>
@@ -174,6 +204,45 @@ export default function MovieDetails() {
                     <RatingPill>My {movie.rating}/10</RatingPill>
                   )}
               </RatingsLine>
+
+              {movie.watched_mark === false && (
+                <PrioritySection>
+                  <SectionLabel>To Watch Priority</SectionLabel>
+
+                  <PriorityButtons>
+                    <PriorityButton
+                      type="button"
+                      $active={currentPriority === "low"}
+                      onClick={() => handlePriorityChange("low")}
+                      disabled={isUpdatingPriority}
+                    >
+                      Low
+                    </PriorityButton>
+
+                    <PriorityButton
+                      type="button"
+                      $active={currentPriority === "medium"}
+                      onClick={() => handlePriorityChange("medium")}
+                      disabled={isUpdatingPriority}
+                    >
+                      Medium
+                    </PriorityButton>
+
+                    <PriorityButton
+                      type="button"
+                      $active={currentPriority === "high"}
+                      onClick={() => handlePriorityChange("high")}
+                      disabled={isUpdatingPriority}
+                    >
+                      High
+                    </PriorityButton>
+                  </PriorityButtons>
+
+                  {isUpdatingPriority && (
+                    <PriorityStatus>Saving priority...</PriorityStatus>
+                  )}
+                </PrioritySection>
+              )}
 
               <DevActions>
                 <Button
@@ -244,7 +313,10 @@ export default function MovieDetails() {
 
           <Section>
             <StyledButtons>
-              <Button onClick={() => router.push(`/edit-movie/${id}`)} type="button">
+              <Button
+                onClick={() => router.push(`/edit-movie/${id}`)}
+                type="button"
+              >
                 <Edit3 size={16} /> Edit
               </Button>
 
@@ -370,6 +442,57 @@ const RatingPill = styled.span`
   color: #fff;
   font-size: 0.85rem;
   font-weight: 600;
+`;
+
+const PrioritySection = styled.div`
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fcfcfd;
+`;
+
+const SectionLabel = styled.div`
+  margin-bottom: 10px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+`;
+
+const PriorityButtons = styled.div`
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+`;
+
+const PriorityButton = styled.button`
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid ${({ $active }) => ($active ? "#111827" : "#d1d5db")};
+  background: ${({ $active }) => ($active ? "#111827" : "#fff")};
+  color: ${({ $active }) => ($active ? "#fff" : "#111827")};
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:hover {
+    border-color: #111827;
+    background: ${({ $active }) => ($active ? "#111827" : "#f9fafb")};
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+`;
+
+const PriorityStatus = styled.div`
+  margin-top: 8px;
+  color: #6b7280;
+  font-size: 13px;
 `;
 
 const DevActions = styled.div`

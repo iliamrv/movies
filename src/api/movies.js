@@ -40,12 +40,6 @@ export async function deleteMovieById(id) {
 		.eq("id", id);
 }
 
-export async function updateMoviePriority(id, priority) {
-	return supabase
-		.from(TABLE_NAME)
-		.update({ priority })
-		.eq("id", id);
-}
 
 
 export async function getWatchedMoviesPage({
@@ -86,4 +80,13 @@ export async function getWatchedMoviesPage({
 
 export async function createMovie(payload) {
 	return supabase.from(TABLE_NAME).insert(payload).select().single();
+}
+
+export async function updateMoviePriority(id, priority) {
+	return await supabase
+		.from("movies_2024")
+		.update({ priority })
+		.eq("id", id)
+		.select()
+		.single();
 }
