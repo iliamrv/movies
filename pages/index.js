@@ -6,7 +6,6 @@ import Loading from "./loading";
 import Table from "../components/Table";
 import { Button } from "../styles/globalStyles";
 import { getWatchedMovies } from "../src/api/movies";
-const CACHE_KEY = "moviebase_watched_movies_cache";
 
 export default function LibraryPage() {
   const router = useRouter();
@@ -14,27 +13,7 @@ export default function LibraryPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [movies, setMovies] = useState([]);
 
-
-  function loadCachedMovies() {
-    if (typeof window === "undefined") return;
-
-    const cached = localStorage.getItem(CACHE_KEY);
-
-    if (!cached) return;
-
-    try {
-      const parsed = JSON.parse(cached);
-
-      if (Array.isArray(parsed)) {
-        setMovies(parsed);
-      }
-    } catch (error) {
-      console.warn("Failed to read movies cache:", error);
-    }
-  }
-
   useEffect(() => {
-    loadCachedMovies();
     fetchMovies();
   }, []);
 
@@ -45,12 +24,6 @@ export default function LibraryPage() {
 
     if (!error && data) {
       setMovies(data);
-
-      try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-      } catch (error) {
-        console.warn("Failed to save movies cache:", error);
-      }
     }
 
     setIsLoading(false);
