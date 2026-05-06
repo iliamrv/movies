@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import styled from "styled-components";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
+
+import { updateMovieRewatchMark } from "../src/api/movies";
 
 import {
   getExtendedSearchText,
@@ -21,6 +23,7 @@ const PAGE_SIZE = 25;
 
 const QUICK_FILTERS = [
   { value: "all", label: "All" },
+  { value: "rewatch", label: "Rewatch" },
   { value: "no_rating", label: "Unrated" },
   { value: "high_rated", label: "High 8+" },
   { value: "no_watch_date", label: "No date" },
@@ -39,12 +42,23 @@ function getTitleMetaLine(item) {
   return parts.join(" · ");
 }
 
-export default function Table({ newItems = [] }) {
+function formatWatchDate(item) {
+  if (!item.watchTime) return "—";
+
+  if (item.watch_date_precision === "year") {
+    return String(item.watchTime).slice(0, 4);
+  }
+
+  return item.watchTime;
+}
+
+export default function Table({ newItems = [], onMoviePatch }) {
   const [search, setSearch] = useState("");
   const [quickFilter, setQuickFilter] = useState("all");
   const [sortKey, setSortKey] = useState("watchTime");
   const [sortDirection, setSortDirection] = useState("desc");
   const [page, setPage] = useState(1);
+  const [updatingRewatchId, setUpdatingRewatchId] = useState(null);
 
   function handleSort(key) {
     setPage(1);
@@ -73,6 +87,27 @@ export default function Table({ newItems = [] }) {
     setPage(1);
   }
 
+  async function handleRemoveRewatch(event, movieId) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    setUpdatingRewatchId(movieId);
+
+    const { error } = await updateMovieRewatchMark(movieId, false);
+
+    if (error) {
+      console.error("Failed to remove rewatch mark:", error);
+      setUpdatingRewatchId(null);
+      return;
+    }
+
+    onMoviePatch?.(movieId, {
+      rewatch_mark: false,
+    });
+
+    setUpdatingRewatchId(null);
+  }
+
   const filtered = useMemo(() => {
     const query = normalizeSearchText(search);
 
@@ -81,7 +116,6 @@ export default function Table({ newItems = [] }) {
     if (query) {
       items = items.filter((item) => {
         const searchText = getExtendedSearchText(item);
-
         return searchText.includes(query);
       });
     }
@@ -170,36 +204,38 @@ export default function Table({ newItems = [] }) {
 
   return (
     <Wrapper>
-      <TopBar>
-        <SearchInput
-          placeholder="Search: title, RU title, cast, genre, comment..."
-          value={search}
-          onChange={handleSearchChange}
-        />
+      <StickyControls>
+        <TopBar>
+          <SearchInput
+            placeholder="Search: title, RU title, cast, genre, comment..."
+            value={search}
+            onChange={handleSearchChange}
+          />
 
-        <ResultCount>
-          {filtered.length} {filtered.length === 1 ? "movie" : "movies"}
-        </ResultCount>
-      </TopBar>
+          <ResultCount>
+            {filtered.length} {filtered.length === 1 ? "movie" : "movies"}
+          </ResultCount>
+        </TopBar>
 
-      <Toolbar>
-        <ToolbarGroup>
-          <ToolbarLabel>Quick filters</ToolbarLabel>
+        <Toolbar>
+          <ToolbarGroup>
+            <ToolbarLabel>Quick filters</ToolbarLabel>
 
-          <FilterChips>
-            {QUICK_FILTERS.map((filter) => (
-              <FilterChip
-                key={filter.value}
-                type="button"
-                $active={quickFilter === filter.value}
-                onClick={() => handleQuickFilterChange(filter.value)}
-              >
-                {filter.label}
-              </FilterChip>
-            ))}
-          </FilterChips>
-        </ToolbarGroup>
-      </Toolbar>
+            <FilterChips>
+              {QUICK_FILTERS.map((filter) => (
+                <FilterChip
+                  key={filter.value}
+                  type="button"
+                  $active={quickFilter === filter.value}
+                  onClick={() => handleQuickFilterChange(filter.value)}
+                >
+                  {filter.label}
+                </FilterChip>
+              ))}
+            </FilterChips>
+          </ToolbarGroup>
+        </Toolbar>
+      </StickyControls>
 
       <TableContainer>
         <TableWrap>
@@ -238,6 +274,18 @@ export default function Table({ newItems = [] }) {
                       {getMovieTitle(item)}
                     </MovieLink>
 
+                    {item.rewatch_mark && (
+                      <RewatchBadge
+                        type="button"
+                        onClick={(event) => handleRemoveRewatch(event, item.id)}
+                        disabled={updatingRewatchId === item.id}
+                        title="Remove from Rewatch"
+                      >
+                        Rewatch
+                        <X size={12} />
+                      </RewatchBadge>
+                    )}
+
                     {titleMetaLine && (
                       <TitleMetaLine>{titleMetaLine}</TitleMetaLine>
                     )}
@@ -246,7 +294,7 @@ export default function Table({ newItems = [] }) {
                   <td>{getMovieDirector(item)}</td>
                   <td>{getMovieYear(item)}</td>
                   <td>{renderRating(item.rating)}</td>
-                  <td>{item.watchTime || "—"}</td>
+                  <td>{formatWatchDate(item)}</td>
                 </TableRow>
               );
             })}
@@ -293,6 +341,16 @@ const Wrapper = styled.div`
   width: 100%;
 `;
 
+const StickyControls = styled.div`
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 12px 0 14px;
+  margin-bottom: 4px;
+  background: #f6f7fb;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+`;
+
 const TopBar = styled.div`
   display: flex;
   align-items: center;
@@ -330,7 +388,6 @@ const ResultCount = styled.div`
 const Toolbar = styled.div`
   display: grid;
   gap: 10px;
-  margin-bottom: 14px;
 `;
 
 const ToolbarGroup = styled.div`
@@ -456,6 +513,40 @@ const MovieLink = styled(Link)`
 
   &:hover {
     text-decoration: underline;
+  }
+`;
+
+const RewatchBadge = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  padding: 3px 7px;
+  border: 0;
+  border-radius: 999px;
+  background: #111827;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: middle;
+  cursor: pointer;
+
+  svg {
+    opacity: 0.75;
+  }
+
+  &:hover {
+    background: #374151;
+
+    svg {
+      opacity: 1;
+    }
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
   }
 `;
 

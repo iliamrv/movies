@@ -11,9 +11,7 @@ import {
 function getAlternativeTitles(tmdb) {
 	if (!Array.isArray(tmdb.alternativeTitles)) return [];
 
-	return tmdb.alternativeTitles
-		.map((item) => item?.title)
-		.filter(Boolean);
+	return tmdb.alternativeTitles.map((item) => item?.title).filter(Boolean);
 }
 
 function getRuAlternativeTitles(tmdb) {
@@ -70,6 +68,8 @@ export function getExtendedSearchText(item) {
 		item.comment,
 		item.imdb,
 
+		item.rewatch_mark ? "rewatch пересмотреть" : "",
+
 		tmdb.titles?.ru,
 		tmdb.titles?.en,
 		tmdb.titles?.original,
@@ -111,6 +111,10 @@ export function applyQuickFilter(items, quickFilter) {
 
 	if (quickFilter === "no_watch_date") {
 		return items.filter(hasNoWatchDate);
+	}
+
+	if (quickFilter === "rewatch") {
+		return items.filter((item) => item.rewatch_mark === true);
 	}
 
 	return items;

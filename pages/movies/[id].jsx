@@ -3,13 +3,26 @@ import { useEffect, useState } from "react";
 import styled from "styled-components";
 import { fetchOmdbById, mergeMovieData } from "../../src/api/omdb";
 
-import { Edit3, Trash2, ArrowLeft, Film, Database } from "lucide-react";
+import {
+  Edit3,
+  Trash2,
+  ArrowLeft,
+  Film,
+  Database,
+  Star,
+  CheckCircle2,
+  Sparkles,
+} from "lucide-react";
+
 import { StyledButtons, Button } from "../../styles/globalStyles";
 
 import {
   getMovieById,
   deleteMovieById,
   updateMoviePriority,
+  updateMovieRewatchMark,
+  markMovieAsWatched,
+  updateMovieById,
 } from "../../src/api/movies";
 
 import {
@@ -31,11 +44,24 @@ export default function MovieDetails() {
   const { id } = router.query;
 
   const [movie, setMovie] = useState(null);
+
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingTmdb, setIsFetchingTmdb] = useState(false);
   const [isUpdatingPriority, setIsUpdatingPriority] = useState(false);
+  const [isUpdatingRewatch, setIsUpdatingRewatch] = useState(false);
+  const [isMarkingWatched, setIsMarkingWatched] = useState(false);
+  const [isImprovingComment, setIsImprovingComment] = useState(false);
+  const [isSavingAiComment, setIsSavingAiComment] = useState(false);
+
   const [error, setError] = useState("");
   const [tmdbError, setTmdbError] = useState("");
+
+  const [watchedForm, setWatchedForm] = useState({
+    rating: "",
+    watchTime: new Date().toISOString().slice(0, 10),
+    comment: "",
+  });
+
 
   useEffect(() => {
     if (!id) return;
@@ -125,6 +151,164 @@ export default function MovieDetails() {
     setIsUpdatingPriority(false);
   }
 
+  async function handleToggleRewatch() {
+    if (!movie?.id) return;
+
+    const nextValue = !movie.rewatch_mark;
+
+    setIsUpdatingRewatch(true);
+    setError("");
+
+    const { data, error } = await updateMovieRewatchMark(movie.id, nextValue);
+
+    if (error) {
+      console.error(error);
+      setError("Failed to update rewatch mark");
+      setIsUpdatingRewatch(false);
+      return;
+    }
+
+    setMovie((prev) => ({
+      ...prev,
+      rewatch_mark: data?.rewatch_mark ?? nextValue,
+    }));
+
+    setIsUpdatingRewatch(false);
+  }
+
+  async function handleMarkAsWatched(event) {
+    event.preventDefault();
+
+    if (!movie?.id) return;
+
+    const watchDate =
+      watchedForm.watchTime || new Date().toISOString().slice(0, 10);
+
+    const currentWatchDates = Array.isArray(movie.watch_dates)
+      ? movie.watch_dates
+      : [];
+
+    const nextWatchDates = currentWatchDates.includes(watchDate)
+      ? currentWatchDates
+      : [...currentWatchDates, watchDate];
+
+    const payload = {
+      watchTime: watchDate,
+      watch_dates: nextWatchDates,
+    };
+
+    if (watchedForm.rating !== "") {
+      payload.rating = Number(watchedForm.rating);
+    }
+
+    if (watchedForm.comment.trim()) {
+      payload.comment = watchedForm.comment.trim();
+    }
+
+    setIsMarkingWatched(true);
+    setError("");
+
+    const { data, error } = await markMovieAsWatched(movie.id, payload);
+
+    if (error) {
+      console.error(error);
+      setError("Failed to mark movie as watched");
+      setIsMarkingWatched(false);
+      return;
+    }
+
+    setMovie((prev) => ({
+      ...prev,
+      ...data,
+      watched_mark: true,
+    }));
+
+    setIsMarkingWatched(false);
+  }
+
+  async function handleImproveComment() {
+    const trimmed = rawAiComment.trim();
+
+    if (!trimmed || !movie?.id) return;
+
+    setIsImprovingComment(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/improve-movie-comment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          rawComment: trimmed,
+          movie: {
+            title: movie.title,
+            director: movie.director,
+            year: movie.year,
+            rating: movie.rating,
+            comment: movie.comment,
+          },
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to improve comment");
+      }
+
+      setAiCommentDraft(data.comment || trimmed);
+      setAiTagsDraft(Array.isArray(data.tags) ? data.tags.slice(0, 3) : []);
+    } catch (error) {
+      console.error(error);
+      setError("Failed to improve comment");
+    } finally {
+      setIsImprovingComment(false);
+    }
+  }
+
+  async function handleSaveAiComment() {
+    if (!movie?.id || !aiCommentDraft.trim()) return;
+
+    const existingTags = Array.isArray(movie.tags) ? movie.tags : [];
+
+    const cleanAiTags = aiTagsDraft
+      .map((tag) => String(tag).trim().toLowerCase())
+      .filter(Boolean);
+
+    const nextTags = Array.from(new Set([...existingTags, ...cleanAiTags]));
+
+    const payload = {
+      comment: aiCommentDraft.trim(),
+      tags: nextTags,
+    };
+
+    setIsSavingAiComment(true);
+    setError("");
+
+    const { data, error } = await updateMovieById(movie.id, payload);
+
+    if (error) {
+      console.error(error);
+      setError("Failed to save AI comment");
+      setIsSavingAiComment(false);
+      return;
+    }
+
+    setMovie((prev) => ({
+      ...prev,
+      ...(data || {}),
+      comment: payload.comment,
+      tags: payload.tags,
+    }));
+
+    setRawAiComment("");
+    setAiCommentDraft("");
+    setAiTagsDraft([]);
+    setIsSavingAiComment(false);
+  }
+
   async function handleDelete(e) {
     e.preventDefault();
 
@@ -150,6 +334,7 @@ export default function MovieDetails() {
 
   const watchDates = Array.isArray(movie?.watch_dates) ? movie.watch_dates : [];
   const currentPriority = movie?.priority || "medium";
+  const movieTags = Array.isArray(movie?.tags) ? movie.tags : [];
 
   return (
     <PageWrap>
@@ -205,6 +390,28 @@ export default function MovieDetails() {
                   )}
               </RatingsLine>
 
+              {movieTags.length > 0 && (
+                <MovieTagsBlock>
+                  {movieTags.map((tag) => (
+                    <MovieTag key={tag}>{tag}</MovieTag>
+                  ))}
+                </MovieTagsBlock>
+              )}
+
+              {movie.watched_mark === true && (
+                <QuickActionPanel>
+                  <QuickActionButton
+                    type="button"
+                    $active={movie.rewatch_mark}
+                    onClick={handleToggleRewatch}
+                    disabled={isUpdatingRewatch}
+                  >
+                    <Star size={16} />
+                    {movie.rewatch_mark ? "In Rewatch list" : "Add to Rewatch"}
+                  </QuickActionButton>
+                </QuickActionPanel>
+              )}
+
               {movie.watched_mark === false && (
                 <PrioritySection>
                   <SectionLabel>To Watch Priority</SectionLabel>
@@ -242,6 +449,65 @@ export default function MovieDetails() {
                     <PriorityStatus>Saving priority...</PriorityStatus>
                   )}
                 </PrioritySection>
+              )}
+
+              {movie.watched_mark === false && (
+                <MarkWatchedBox onSubmit={handleMarkAsWatched}>
+                  <SectionLabel>Mark as watched</SectionLabel>
+
+                  <MarkWatchedGrid>
+                    <FormField>
+                      <FormLabel>Rating</FormLabel>
+                      <SmallInput
+                        type="number"
+                        min="1"
+                        max="10"
+                        step="1"
+                        value={watchedForm.rating}
+                        onChange={(event) =>
+                          setWatchedForm((prev) => ({
+                            ...prev,
+                            rating: event.target.value,
+                          }))
+                        }
+                        placeholder="1–10"
+                      />
+                    </FormField>
+
+                    <FormField>
+                      <FormLabel>Watch date</FormLabel>
+                      <SmallInput
+                        type="date"
+                        value={watchedForm.watchTime}
+                        onChange={(event) =>
+                          setWatchedForm((prev) => ({
+                            ...prev,
+                            watchTime: event.target.value,
+                          }))
+                        }
+                      />
+                    </FormField>
+                  </MarkWatchedGrid>
+
+                  <FormField>
+                    <FormLabel>Comment</FormLabel>
+                    <CommentTextarea
+                      value={watchedForm.comment}
+                      onChange={(event) =>
+                        setWatchedForm((prev) => ({
+                          ...prev,
+                          comment: event.target.value,
+                        }))
+                      }
+                      placeholder="Optional short note..."
+                    />
+                  </FormField>
+
+                  <MarkWatchedButton type="submit" disabled={isMarkingWatched}>
+                    <CheckCircle2 size={16} />
+                    {isMarkingWatched ? "Saving..." : "Mark as watched"}
+                  </MarkWatchedButton>
+                </MarkWatchedBox>
               )}
 
               <DevActions>
@@ -301,6 +567,8 @@ export default function MovieDetails() {
               </HistoryList>
             </Section>
           )}
+
+          
 
           <Section>
             <SectionTitle>Comment</SectionTitle>
@@ -444,6 +712,55 @@ const RatingPill = styled.span`
   font-weight: 600;
 `;
 
+const MovieTagsBlock = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 14px;
+`;
+
+const MovieTag = styled.span`
+  display: inline-flex;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+`;
+
+const QuickActionPanel = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+`;
+
+const QuickActionButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid ${({ $active }) => ($active ? "#111827" : "#d1d5db")};
+  background: ${({ $active }) => ($active ? "#111827" : "#fff")};
+  color: ${({ $active }) => ($active ? "#fff" : "#111827")};
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:hover {
+    border-color: #111827;
+    background: ${({ $active }) => ($active ? "#111827" : "#f9fafb")};
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+`;
+
 const PrioritySection = styled.div`
   margin-top: 18px;
   padding: 14px;
@@ -495,6 +812,89 @@ const PriorityStatus = styled.div`
   font-size: 13px;
 `;
 
+const MarkWatchedBox = styled.form`
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fcfcfd;
+`;
+
+const MarkWatchedGrid = styled.div`
+  display: grid;
+  grid-template-columns: 120px 180px;
+  gap: 10px;
+  margin-bottom: 10px;
+
+  @media (max-width: 560px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const FormField = styled.label`
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+`;
+
+const FormLabel = styled.span`
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+`;
+
+const SmallInput = styled.input`
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: #fff;
+  color: #111827;
+  font-size: 14px;
+  outline: none;
+
+  &:focus {
+    border-color: #111827;
+  }
+`;
+
+const CommentTextarea = styled.textarea`
+  min-height: 78px;
+  padding: 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: #fff;
+  color: #111827;
+  font-size: 14px;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+
+  &:focus {
+    border-color: #111827;
+  }
+`;
+
+const MarkWatchedButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: #111827;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+`;
+
 const DevActions = styled.div`
   display: flex;
   align-items: center;
@@ -534,6 +934,103 @@ const DescriptionBox = styled.div`
   font-size: 0.98rem;
   white-space: pre-wrap;
   word-break: break-word;
+`;
+
+const SmartCommentBox = styled.div`
+  padding: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fcfcfd;
+`;
+
+const SmartTextarea = styled.textarea`
+  width: 100%;
+  min-height: 84px;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  background: #fff;
+  color: #111827;
+  font-size: 14px;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+
+  &:focus {
+    border-color: #111827;
+  }
+`;
+
+const SmartActions = styled.div`
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+`;
+
+const SmartButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: #111827;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+`;
+
+const SecondarySmartButton = styled.button`
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  background: #fff;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+`;
+
+const AiDraftBox = styled.div`
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f8fafc;
+`;
+
+const DraftLabel = styled.div`
+  margin-top: ${({ $compact }) => ($compact ? "10px" : "0")};
+  margin-bottom: 8px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+`;
+
+const DraftTags = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 4px;
+`;
+
+const DraftTag = styled.span`
+  display: inline-flex;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #111827;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
 `;
 
 const CommentBox = styled.div`

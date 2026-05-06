@@ -12,35 +12,42 @@ export async function getWatchedMovies(limit = 20) {
 }
 
 export async function getMovieById(id) {
-	return supabase
-		.from(TABLE_NAME)
-		.select("*")
-		.eq("id", id)
-		.single();
+	return supabase.from(TABLE_NAME).select("*").eq("id", id).single();
 }
 
 export async function getUnwatchedMovies() {
-	return supabase
-		.from(TABLE_NAME)
-		.select("*")
-		.eq("watched_mark", false);
+	return supabase.from(TABLE_NAME).select("*").eq("watched_mark", false);
 }
 
-export async function updateMovieById(id, payload) {
-	return supabase
-		.from(TABLE_NAME)
-		.update(payload)
-		.eq("id", id);
-}
 
 export async function deleteMovieById(id) {
-	return supabase
-		.from(TABLE_NAME)
-		.delete()
-		.eq("id", id);
+	return supabase.from(TABLE_NAME).delete().eq("id", id);
 }
 
+export async function updateMoviePriority(id, priority) {
+	return supabase.from(TABLE_NAME).update({ priority }).eq("id", id);
+}
 
+export async function updateMovieRewatchMark(id, rewatch_mark) {
+	return supabase
+		.from(TABLE_NAME)
+		.update({ rewatch_mark })
+		.eq("id", id)
+		.select()
+		.single();
+}
+
+export async function markMovieAsWatched(id, payload) {
+	return supabase
+		.from(TABLE_NAME)
+		.update({
+			watched_mark: true,
+			...payload,
+		})
+		.eq("id", id)
+		.select()
+		.single();
+}
 
 export async function getWatchedMoviesPage({
 	page = 1,
@@ -66,7 +73,8 @@ export async function getWatchedMoviesPage({
       watchTime,
       imdb,
       comment,
-      external_meta
+      external_meta,
+      rewatch_mark
     `,
 			{ count: "exact" }
 		)
@@ -82,10 +90,10 @@ export async function createMovie(payload) {
 	return supabase.from(TABLE_NAME).insert(payload).select().single();
 }
 
-export async function updateMoviePriority(id, priority) {
-	return await supabase
-		.from("movies_2024")
-		.update({ priority })
+export async function updateMovieById(id, payload) {
+	return supabase
+		.from(TABLE_NAME)
+		.update(payload)
 		.eq("id", id)
 		.select()
 		.single();
