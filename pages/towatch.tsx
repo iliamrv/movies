@@ -18,15 +18,38 @@ import { fetchOmdbById, mergeMovieData } from "../src/api/omdb";
 const PICKS_COUNT = 8;
 const HIGH_PRIORITY_SLOTS = 2;
 
-function getMovieWeight(movie) {
+type Priority = "high" | "medium" | "low";
+
+type MovieItem = {
+  id: string | number;
+  title?: string | null;
+  Title?: string | null;
+  director?: string | null;
+  year?: string | number | null;
+  imdb?: string | null;
+  imdbID?: string | null;
+  priority?: Priority | null;
+  watched_mark?: boolean | null;
+  towatch_cycle_seen_at?: string | null;
+  external_meta?: any;
+  Genre?: string | null;
+  genre?: string | null;
+  Poster?: string | null;
+  poster?: string | null;
+  poster_url?: string | null;
+  posterError?: boolean;
+  onPosterError?: () => void;
+};
+
+function getMovieWeight(movie: MovieItem) {
   if (movie.priority === "medium") return 3;
   if (movie.priority === "low") return 1;
 
   return 2;
 }
 
-function getWeightedRandomMovies(items, count) {
-  const result = [];
+function getWeightedRandomMovies(items: MovieItem[], count: number) {
+  const result: MovieItem[] = [];
   const pool = [...items];
 
   while (result.length < count && pool.length > 0) {
@@ -51,23 +74,23 @@ function getWeightedRandomMovies(items, count) {
   return result;
 }
 
-function excludeAlreadyPicked(items, pickedMovies) {
+function excludeAlreadyPicked(items: MovieItem[], pickedMovies: MovieItem[]) {
   const pickedIds = new Set(pickedMovies.map((movie) => String(movie.id)));
 
   return items.filter((movie) => !pickedIds.has(String(movie.id)));
 }
 
-function normalizeGenre(value) {
+function normalizeGenre(value: string | null | undefined) {
   return String(value || "")
     .trim()
     .toLowerCase();
 }
 
-function getMovieGenres(item) {
+function getMovieGenres(item: MovieItem): string[] {
   const tmdbGenres = item?.external_meta?.tmdb?.genres;
 
   if (Array.isArray(tmdbGenres) && tmdbGenres.length > 0) {
-    return tmdbGenres.filter(Boolean);
+    return tmdbGenres.map(String).filter(Boolean);
   }
 
   if (item?.Genre) {
@@ -86,8 +109,8 @@ function getMovieGenres(item) {
   return [];
 }
 
-function getGenreLabel(genre) {
-  const map = {
+function getGenreLabel(genre: string) {
+  const map: Record<string, string> = {
     drama: "Drama",
     comedy: "Comedy",
     crime: "Crime",
@@ -119,7 +142,7 @@ function getGenreLabel(genre) {
   return map[normalizeGenre(genre)] || genre;
 }
 
-async function getCycleRandomMovies(items, count = PICKS_COUNT) {
+async function getCycleRandomMovies(items: MovieItem[], count = PICKS_COUNT) {
   const highPriorityMovies = items.filter((movie) => movie.priority === "high");
   const cycleMovies = items.filter((movie) => movie.priority !== "high");
 
@@ -189,7 +212,7 @@ async function getCycleRandomMovies(items, count = PICKS_COUNT) {
 
 export default function Page() {
   const [isLoading, setIsLoading] = useState(false);
-  const [movies, setMovies] = useState([]);
+  const [movies, setMovies] = useState<MovieItem[]>([]);
   const [genreFilter, setGenreFilter] = useState("all");
 
   useEffect(() => {
@@ -214,7 +237,7 @@ export default function Page() {
       return;
     }
 
-    const selected = await getCycleRandomMovies(data, PICKS_COUNT);
+    const selected = await getCycleRandomMovies(data as MovieItem[], PICKS_COUNT);
 
     const enriched = await Promise.all(
       selected.map(async (movie) => {
@@ -235,12 +258,12 @@ export default function Page() {
       })
     );
 
-    setMovies(enriched);
+    setMovies(enriched as MovieItem[]);
     setGenreFilter("all");
     setIsLoading(false);
   }
 
-  function markPosterError(id) {
+  function markPosterError(id: MovieItem["id"]) {
     setMovies((prev) =>
       prev.map((movie) =>
         String(movie.id) === String(id)
@@ -250,7 +273,7 @@ export default function Page() {
     );
   }
 
-  async function handleUpdatePriority(id, priority) {
+  async function handleUpdatePriority(id: MovieItem["id"], priority: Priority) {
     const { error } = await updateMoviePriority(id, priority);
 
     if (error) {
@@ -265,7 +288,7 @@ export default function Page() {
     );
   }
 
-  async function handleRemoveMovie(id) {
+  async function handleRemoveMovie(id: MovieItem["id"]) {
     const { error } = await deleteMovieById(id);
 
     if (error) {
@@ -278,23 +301,23 @@ export default function Page() {
     );
   }
 
-  function goToMovie(id) {
+  function goToMovie(id: MovieItem["id"]) {
     window.location.href = `/movies/${id}`;
   }
 
-  const availableGenres = useMemo(() => {
-    const genres = new Set();
+  const availableGenres = useMemo<string[]>((() => {
+    const genres = new Set<string>();
 
     movies.forEach((movie) => {
       getMovieGenres(movie).forEach((genre) => {
-        genres.add(genre);
+        genres.add(String(genre));
       });
     });
 
     return Array.from(genres).sort((a, b) =>
       getGenreLabel(a).localeCompare(getGenreLabel(b))
     );
-  }, [movies]);
+  }) as () => string[], [movies]);
 
   const filteredMovies = useMemo(() => {
     if (genreFilter === "all") {
@@ -364,7 +387,7 @@ export default function Page() {
                 }}
                 onEdit={() => goToMovie(item.id)}
                 onRemove={() => handleRemoveMovie(item.id)}
-                onPriorityChange={(priority) =>
+                onPriorityChange={(priority: Priority) =>
                   handleUpdatePriority(item.id, priority)
                 }
               />
