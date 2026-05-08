@@ -11,21 +11,57 @@ export async function getWatchedMovies(limit = 20) {
 		.limit(limit);
 }
 
+export async function getLibraryMovies(limit = 1000) {
+	return supabase
+		.from(TABLE_NAME)
+		.select(`
+      id,
+      title,
+      director,
+      year,
+      rating,
+      watchTime,
+      watch_date_precision,
+      imdb,
+      comment,
+      rewatch_mark,
+      tags,
+      search_text
+    `)
+		.eq("watched_mark", true)
+		.order("watchTime", { ascending: false, nullsFirst: false })
+		.limit(limit);
+}
+
 export async function getMovieById(id) {
 	return supabase.from(TABLE_NAME).select("*").eq("id", id).single();
 }
 
 export async function getUnwatchedMovies() {
-	return supabase.from(TABLE_NAME).select("*").eq("watched_mark", false);
+	return supabase
+		.from(TABLE_NAME)
+		.select("*")
+		.eq("watched_mark", false);
 }
 
+export async function updateMovieById(id, payload) {
+	return supabase
+		.from(TABLE_NAME)
+		.update(payload)
+		.eq("id", id)
+		.select()
+		.single();
+}
 
 export async function deleteMovieById(id) {
 	return supabase.from(TABLE_NAME).delete().eq("id", id);
 }
 
 export async function updateMoviePriority(id, priority) {
-	return supabase.from(TABLE_NAME).update({ priority }).eq("id", id);
+	return supabase
+		.from(TABLE_NAME)
+		.update({ priority })
+		.eq("id", id);
 }
 
 export async function updateMovieRewatchMark(id, rewatch_mark) {
@@ -40,61 +76,31 @@ export async function updateMovieRewatchMark(id, rewatch_mark) {
 export async function markMovieAsWatched(id, payload) {
 	return supabase
 		.from(TABLE_NAME)
-		.update({
-			watched_mark: true,
-			...payload,
-		})
+		.update({ watched_mark: true, ...payload })
 		.eq("id", id)
 		.select()
 		.single();
 }
 
-export async function getWatchedMoviesPage({
-	page = 1,
-	pageSize = 25,
-	sortKey = "watchTime",
-	sortDirection = "desc",
-} = {}) {
-	const from = (page - 1) * pageSize;
-	const to = from + pageSize - 1;
-
-	const allowedSortKeys = ["title", "director", "year", "rating", "watchTime"];
-	const safeSortKey = allowedSortKeys.includes(sortKey) ? sortKey : "watchTime";
+export async function markTowatchMoviesAsSeen(ids) {
+	if (!Array.isArray(ids) || ids.length === 0) {
+		return { data: null, error: null };
+	}
 
 	return supabase
 		.from(TABLE_NAME)
-		.select(
-			`
-      id,
-      title,
-      director,
-      year,
-      rating,
-      watchTime,
-      imdb,
-      comment,
-      external_meta,
-      rewatch_mark
-    `,
-			{ count: "exact" }
-		)
-		.eq("watched_mark", true)
-		.order(safeSortKey, {
-			ascending: sortDirection === "asc",
-			nullsFirst: false,
-		})
-		.range(from, to);
+		.update({ towatch_cycle_seen_at: new Date().toISOString() })
+		.in("id", ids);
+}
+
+export async function resetTowatchCycle() {
+	return supabase
+		.from(TABLE_NAME)
+		.update({ towatch_cycle_seen_at: null })
+		.eq("watched_mark", false)
+		.or("priority.is.null,priority.neq.high");
 }
 
 export async function createMovie(payload) {
 	return supabase.from(TABLE_NAME).insert(payload).select().single();
-}
-
-export async function updateMovieById(id, payload) {
-	return supabase
-		.from(TABLE_NAME)
-		.update(payload)
-		.eq("id", id)
-		.select()
-		.single();
 }

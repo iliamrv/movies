@@ -20,6 +20,7 @@ import {
 } from "../../src/api/movies";
 
 import { fetchOmdbById, searchOmdb, mergeMovieData } from "../../src/api/omdb";
+import { buildMovieSearchText } from "../../src/utils/buildMovieSearchText";
 
 export default function EditMovie() {
   const router = useRouter();
@@ -36,6 +37,7 @@ export default function EditMovie() {
     watchDatePrecision: "exact",
     watchYear: "",
     tags: [],
+    external_meta: null,
   });
 
   const [searchResults, setSearchResults] = useState([]);
@@ -79,6 +81,7 @@ export default function EditMovie() {
       watchDatePrecision: savedPrecision,
       watchYear: savedWatchYear,
       tags: Array.isArray(data.tags) ? data.tags : [],
+      external_meta: data.external_meta || null,
     });
   }
 
@@ -268,6 +271,11 @@ export default function EditMovie() {
       watch_date_precision: movieData.watchDatePrecision,
       tags: Array.isArray(movieData.tags) ? movieData.tags : [],
     };
+
+    payload.search_text = buildMovieSearchText({
+      ...payload,
+      external_meta: movieData.external_meta,
+    });
 
     const { error } = await updateMovieById(id, payload);
 
