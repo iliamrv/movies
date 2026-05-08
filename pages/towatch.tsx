@@ -452,7 +452,7 @@ const GenreChips = styled.div`
   gap: 7px;
 `;
 
-const GenreChip = styled.button`
+const GenreChip = styled.button<{ $active: boolean }>`
   padding: 7px 10px;
   border: 1px solid ${({ $active }) => ($active ? "#111827" : "#e5e7eb")};
   border-radius: 999px;
