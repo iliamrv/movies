@@ -6,12 +6,7 @@ import { useRouter } from "next/router";
 import Loading from "./loading";
 import MovieCard from "../components/MovieCard";
 import { Button } from "../styles/globalStyles";
-
-import {
-
-  getWatchedMovies,
-} from "../src/api/movies";
-
+import { getWatchedMovies } from "../src/api/movies";
 
 export default function Page() {
   const router = useRouter();
@@ -23,41 +18,45 @@ export default function Page() {
     fetchMovies();
   }, []);
 
-  const fetchMovies = async () => {
+  async function fetchMovies() {
     setIsLoading(true);
 
-    const { data, error } = await getWatchedMovies(20);
+    try {
+      const { data, error } = await getWatchedMovies(20);
 
-    if (!error && data) {
-      const enriched = data.map((movie) => ({
-        ...movie,
-        posterError: false,
-      }));
+      if (error) {
+        console.error("Failed to fetch recent movies:", error);
+        return;
+      }
 
-      setMovies(enriched);
+      if (data) {
+        const enriched = data.map((movie) => ({
+          ...movie,
+          posterError: false,
+        }));
+
+        setMovies(enriched);
+      }
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
-  };
+  }
 
   function markPosterError(id) {
     setMovies((prev) =>
       prev.map((movie) =>
-        movie.id === id ? { ...movie, posterError: true } : movie
+        String(movie.id) === String(id)
+          ? { ...movie, posterError: true }
+          : movie
       )
     );
   }
-
-
-
-
-
 
   return (
     <PageWrap>
       <Header>
         <TitleWrap>
-          <PageTitle>Watched Movies</PageTitle>
+          <PageTitle>Recently Watched</PageTitle>
           <PageText>Last 20 watched movies in card view</PageText>
         </TitleWrap>
 
@@ -67,9 +66,9 @@ export default function Page() {
             Back to library
           </Button>
 
-          <Reload onClick={fetchMovies} type="button">
+          <Reload onClick={fetchMovies} type="button" disabled={isLoading}>
             <RefreshCcw size={16} />
-            Reload
+            {isLoading ? "Reloading..." : "Reload"}
           </Reload>
         </Controls>
       </Header>
@@ -140,6 +139,15 @@ const Reload = styled.button`
   cursor: pointer;
   font-size: 14px;
   line-height: 1;
+
+  &:hover {
+    background: #1f2937;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
 `;
 
 const Grid = styled.div`

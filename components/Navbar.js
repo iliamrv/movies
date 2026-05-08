@@ -57,14 +57,14 @@ function Navbar() {
             </a>
           </Link>
 
-          <Link href="/stats" passHref legacyBehavior>
+          {/* <Link href="/stats" passHref legacyBehavior>
             <a>
               <Button as="span" $secondary={!isActive("/stats")}>
                 <BarChart3 size={16} />
                 Stats
               </Button>
             </a>
-          </Link>
+          </Link> */}
 
           <Link href="/createmovie" passHref legacyBehavior>
             <a>

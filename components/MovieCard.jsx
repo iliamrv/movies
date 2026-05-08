@@ -1,14 +1,15 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import styled from "styled-components";
-import { Film, Flame, Star, Clock3, Trash2, Copy } from "lucide-react";
+import { Film, Trash2, Copy } from "lucide-react";
+
+import { getPosterCandidates } from "../src/utils/posterUtils";
 
 import {
   getMovieTitle,
   getMovieOriginalTitle,
   getMovieDirector,
   getPrimaryGenre,
-  getMoviePoster,
   getImdbRating,
   getRottenTomatoesRating,
   getDaysAgo,
@@ -21,7 +22,8 @@ export default function MovieCard({
   onPriorityChange,
   showActions = true,
 }) {
-  const [failedPosterSrc, setFailedPosterSrc] = useState("");
+  const [posterIndex, setPosterIndex] = useState(0);
+  const [posterFailed, setPosterFailed] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const displayTitle = getMovieTitle(item);
@@ -31,27 +33,13 @@ export default function MovieCard({
   const imdbRating = getImdbRating(item);
   const rottenRating = getRottenTomatoesRating(item);
 
-  const posterSrc = getMoviePoster({
-    ...item,
-    Poster:
-      item?.Poster && item.Poster !== failedPosterSrc ? item.Poster : undefined,
-    poster:
-      item?.poster && item.poster !== failedPosterSrc ? item.poster : undefined,
-    poster_url:
-      item?.poster_url && item.poster_url !== failedPosterSrc
-        ? item.poster_url
-        : undefined,
-    external_meta: {
-      ...(item?.external_meta || {}),
-      tmdb: {
-        ...(item?.external_meta?.tmdb || {}),
-        posterUrl:
-          item?.external_meta?.tmdb?.posterUrl !== failedPosterSrc
-            ? item?.external_meta?.tmdb?.posterUrl
-            : undefined,
-      },
-    },
-  });
+  const posterCandidates = useMemo(() => getPosterCandidates(item), [item]);
+  const posterSrc = posterCandidates[posterIndex]?.url || "";
+
+  useEffect(() => {
+    setPosterIndex(0);
+    setPosterFailed(false);
+  }, [item?.id, posterCandidates.length]);
 
   async function handleCopyMovieInfo(e) {
     e.preventDefault();
@@ -82,10 +70,14 @@ export default function MovieCard({
   }
 
   function handlePosterError() {
-    if (posterSrc) {
-      setFailedPosterSrc(posterSrc);
+    const nextIndex = posterIndex + 1;
+
+    if (nextIndex < posterCandidates.length) {
+      setPosterIndex(nextIndex);
+      return;
     }
 
+    setPosterFailed(true);
     item.onPosterError?.();
   }
 
@@ -94,7 +86,7 @@ export default function MovieCard({
   return (
     <Card>
       <PosterLink href={`/movies/${item.id}`}>
-        {posterSrc ? (
+        {posterSrc && !posterFailed ? (
           <PosterImage
             src={posterSrc}
             alt={displayTitle || "Movie poster"}
@@ -142,35 +134,47 @@ export default function MovieCard({
         {daysAgo !== null && <Meta>Added {daysAgo} days ago</Meta>}
 
         {showActions && (
-          <Row>
-            <Btn
-              type="button"
-              $active={item.priority === "high"}
-              onClick={() => onPriorityChange?.("high")}
-            >
-              <Flame size={16} />
-            </Btn>
+      <PriorityRow>
+  <PriorityDotButton
+    type="button"
+    $tone="high"
+    $active={item.priority === "high"}
+    onClick={() => onPriorityChange?.("high")}
+    title="High priority"
+    aria-label="High priority"
+  >
+    <PriorityDot $tone="high" $active={item.priority === "high"} />
+  </PriorityDotButton>
 
-            <Btn
-              type="button"
-              $active={item.priority === "medium" || !item.priority}
-              onClick={() => onPriorityChange?.("medium")}
-            >
-              <Star size={16} />
-            </Btn>
+  <PriorityDotButton
+    type="button"
+    $tone="medium"
+    $active={item.priority === "medium" || !item.priority}
+    onClick={() => onPriorityChange?.("medium")}
+    title="Medium priority"
+    aria-label="Medium priority"
+  >
+    <PriorityDot
+      $tone="medium"
+      $active={item.priority === "medium" || !item.priority}
+    />
+  </PriorityDotButton>
 
-            <Btn
-              type="button"
-              $active={item.priority === "low"}
-              onClick={() => onPriorityChange?.("low")}
-            >
-              <Clock3 size={16} />
-            </Btn>
+  <PriorityDotButton
+    type="button"
+    $tone="low"
+    $active={item.priority === "low"}
+    onClick={() => onPriorityChange?.("low")}
+    title="Low priority"
+    aria-label="Low priority"
+  >
+    <PriorityDot $tone="low" $active={item.priority === "low"} />
+  </PriorityDotButton>
 
-            <Remove type="button" onClick={onRemove}>
-              <Trash2 size={16} />
-            </Remove>
-          </Row>
+  <Remove type="button" onClick={onRemove} title="Remove">
+    <Trash2 size={16} />
+  </Remove>
+</PriorityRow>
         )}
       </Body>
     </Card>
@@ -304,22 +308,75 @@ const Badge = styled.div`
   border-radius: 999px;
   border: 1px solid #e5e7eb;
 `;
-
-const Row = styled.div`
+const PriorityRow = styled.div`
   display: flex;
+  align-items: center;
   gap: 6px;
   margin-top: 10px;
+  flex-wrap: wrap;
 `;
 
-const Btn = styled.button`
-  padding: 8px;
-  border-radius: 8px;
-  border: 1px solid #ddd;
-  background: ${(p) => (p.$active ? "#111827" : "#fff")};
-  color: ${(p) => (p.$active ? "#fff" : "#111827")};
-  cursor: pointer;
-`;
-
-const Remove = styled(Btn)`
+const Remove = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid #fee2e2;
+  background: #fff;
   color: #dc2626;
+  cursor: pointer;
+
+  &:hover {
+    background: #fef2f2;
+    border-color: #fecaca;
+  }
+`;
+
+const PriorityDotButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid
+    ${({ $active, $tone }) => {
+      if (!$active) return "#e5e7eb";
+      if ($tone === "high") return "#86efac";
+      if ($tone === "medium") return "#fcd34d";
+      return "#cbd5e1";
+    }};
+  background: ${({ $active, $tone }) => {
+    if (!$active) return "#fff";
+    if ($tone === "high") return "#f0fdf4";
+    if ($tone === "medium") return "#fffbeb";
+    return "#f8fafc";
+  }};
+  cursor: pointer;
+  box-shadow: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+
+  &:hover {
+    border-color: ${({ $tone }) => {
+      if ($tone === "high") return "#4ade80";
+      if ($tone === "medium") return "#fbbf24";
+      return "#94a3b8";
+    }};
+  }
+`;
+
+const PriorityDot = styled.span`
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: ${({ $tone }) => {
+    if ($tone === "high") return "#22c55e";
+    if ($tone === "medium") return "#f59e0b";
+    return "#94a3b8";
+  }};
+  opacity: ${({ $active }) => ($active ? 1 : 0.28)};
+  flex: 0 0 auto;
 `;

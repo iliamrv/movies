@@ -416,34 +416,40 @@ export default function MovieDetails() {
                 <PrioritySection>
                   <SectionLabel>To Watch Priority</SectionLabel>
 
-                  <PriorityButtons>
-                    <PriorityButton
-                      type="button"
-                      $active={currentPriority === "low"}
-                      onClick={() => handlePriorityChange("low")}
-                      disabled={isUpdatingPriority}
-                    >
-                      Low
-                    </PriorityButton>
+                 <PriorityButtons>
+  <PriorityButton
+    type="button"
+    $tone="high"
+    $active={currentPriority === "high"}
+    onClick={() => handlePriorityChange("high")}
+    disabled={isUpdatingPriority}
+  >
+    <PriorityDot $tone="high" />
+    High
+  </PriorityButton>
 
-                    <PriorityButton
-                      type="button"
-                      $active={currentPriority === "medium"}
-                      onClick={() => handlePriorityChange("medium")}
-                      disabled={isUpdatingPriority}
-                    >
-                      Medium
-                    </PriorityButton>
+  <PriorityButton
+    type="button"
+    $tone="medium"
+    $active={currentPriority === "medium"}
+    onClick={() => handlePriorityChange("medium")}
+    disabled={isUpdatingPriority}
+  >
+    <PriorityDot $tone="medium" />
+    Medium
+  </PriorityButton>
 
-                    <PriorityButton
-                      type="button"
-                      $active={currentPriority === "high"}
-                      onClick={() => handlePriorityChange("high")}
-                      disabled={isUpdatingPriority}
-                    >
-                      High
-                    </PriorityButton>
-                  </PriorityButtons>
+  <PriorityButton
+    type="button"
+    $tone="low"
+    $active={currentPriority === "low"}
+    onClick={() => handlePriorityChange("low")}
+    disabled={isUpdatingPriority}
+  >
+    <PriorityDot $tone="low" />
+    Low
+  </PriorityButton>
+</PriorityButtons>
 
                   {isUpdatingPriority && (
                     <PriorityStatus>Saving priority...</PriorityStatus>
@@ -785,25 +791,60 @@ const PriorityButtons = styled.div`
 `;
 
 const PriorityButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   min-height: 36px;
   padding: 0 14px;
   border-radius: 999px;
-  border: 1px solid ${({ $active }) => ($active ? "#111827" : "#d1d5db")};
-  background: ${({ $active }) => ($active ? "#111827" : "#fff")};
-  color: ${({ $active }) => ($active ? "#fff" : "#111827")};
+  border: 1px solid
+    ${({ $active, $tone }) => {
+      if (!$active) return "#d1d5db";
+      if ($tone === "high") return "#86efac";
+      if ($tone === "medium") return "#fde68a";
+      return "#d1d5db";
+    }};
+  background: ${({ $active, $tone }) => {
+    if (!$active) return "#fff";
+    if ($tone === "high") return "#ecfdf5";
+    if ($tone === "medium") return "#fffbeb";
+    return "#f9fafb";
+  }};
+  color: #111827;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 
   &:hover {
-    border-color: #111827;
-    background: ${({ $active }) => ($active ? "#111827" : "#f9fafb")};
+    border-color: ${({ $tone }) => {
+      if ($tone === "high") return "#22c55e";
+      if ($tone === "medium") return "#f59e0b";
+      return "#9ca3af";
+    }};
+    background: ${({ $active, $tone }) => {
+      if ($active && $tone === "high") return "#dcfce7";
+      if ($active && $tone === "medium") return "#fef3c7";
+      if ($active && $tone === "low") return "#f3f4f6";
+      return "#f9fafb";
+    }};
   }
 
   &:disabled {
     opacity: 0.55;
     cursor: not-allowed;
   }
+`;
+
+const PriorityDot = styled.span`
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: ${({ $tone }) => {
+    if ($tone === "high") return "#22c55e";
+    if ($tone === "medium") return "#f59e0b";
+    return "#9ca3af";
+  }};
+  flex: 0 0 auto;
 `;
 
 const PriorityStatus = styled.div`

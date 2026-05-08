@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import { RefreshCcw } from "lucide-react";
 
@@ -55,6 +55,68 @@ function excludeAlreadyPicked(items, pickedMovies) {
   const pickedIds = new Set(pickedMovies.map((movie) => String(movie.id)));
 
   return items.filter((movie) => !pickedIds.has(String(movie.id)));
+}
+
+function normalizeGenre(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase();
+}
+
+function getMovieGenres(item) {
+  const tmdbGenres = item?.external_meta?.tmdb?.genres;
+
+  if (Array.isArray(tmdbGenres) && tmdbGenres.length > 0) {
+    return tmdbGenres.filter(Boolean);
+  }
+
+  if (item?.Genre) {
+    return item.Genre.split(",")
+      .map((genre) => genre.trim())
+      .filter(Boolean);
+  }
+
+  if (item?.genre) {
+    return String(item.genre)
+      .split(",")
+      .map((genre) => genre.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
+function getGenreLabel(genre) {
+  const map = {
+    drama: "Drama",
+    comedy: "Comedy",
+    crime: "Crime",
+    thriller: "Thriller",
+    documentary: "Documentary",
+    action: "Action",
+    adventure: "Adventure",
+    romance: "Romance",
+    mystery: "Mystery",
+    horror: "Horror",
+    fantasy: "Fantasy",
+    "science fiction": "Sci-Fi",
+    sci_fi: "Sci-Fi",
+
+    драма: "Драма",
+    комедия: "Комедия",
+    криминал: "Криминал",
+    триллер: "Триллер",
+    документальный: "Документальный",
+    боевик: "Боевик",
+    приключения: "Приключения",
+    мелодрама: "Мелодрама",
+    детектив: "Детектив",
+    ужасы: "Ужасы",
+    фантастика: "Фантастика",
+    фэнтези: "Фэнтези",
+  };
+
+  return map[normalizeGenre(genre)] || genre;
 }
 
 async function getCycleRandomMovies(items, count = PICKS_COUNT) {
@@ -128,6 +190,7 @@ async function getCycleRandomMovies(items, count = PICKS_COUNT) {
 export default function Page() {
   const [isLoading, setIsLoading] = useState(false);
   const [movies, setMovies] = useState([]);
+  const [genreFilter, setGenreFilter] = useState("all");
 
   useEffect(() => {
     fetchMovies();
@@ -146,6 +209,7 @@ export default function Page() {
 
     if (!data) {
       setMovies([]);
+      setGenreFilter("all");
       setIsLoading(false);
       return;
     }
@@ -172,6 +236,7 @@ export default function Page() {
     );
 
     setMovies(enriched);
+    setGenreFilter("all");
     setIsLoading(false);
   }
 
@@ -217,6 +282,32 @@ export default function Page() {
     window.location.href = `/movies/${id}`;
   }
 
+  const availableGenres = useMemo(() => {
+    const genres = new Set();
+
+    movies.forEach((movie) => {
+      getMovieGenres(movie).forEach((genre) => {
+        genres.add(genre);
+      });
+    });
+
+    return Array.from(genres).sort((a, b) =>
+      getGenreLabel(a).localeCompare(getGenreLabel(b))
+    );
+  }, [movies]);
+
+  const filteredMovies = useMemo(() => {
+    if (genreFilter === "all") {
+      return movies;
+    }
+
+    return movies.filter((movie) =>
+      getMovieGenres(movie).some(
+        (genre) => normalizeGenre(genre) === normalizeGenre(genreFilter)
+      )
+    );
+  }, [movies, genreFilter]);
+
   return (
     <PageWrap>
       <Header>
@@ -228,31 +319,62 @@ export default function Page() {
           </PageText>
         </TitleWrap>
 
-        <Reload onClick={fetchMovies} type="button">
+        <Reload onClick={fetchMovies} type="button" disabled={isLoading}>
           <RefreshCcw size={16} />
-          New picks
+          {isLoading ? "Loading..." : "New picks"}
         </Reload>
       </Header>
 
       {isLoading ? (
         <Loading />
       ) : (
-        <Grid>
-          {movies.map((item) => (
-            <MovieCard
-              key={item.id}
-              item={{
-                ...item,
-                onPosterError: () => markPosterError(item.id),
-              }}
-              onEdit={() => goToMovie(item.id)}
-              onRemove={() => handleRemoveMovie(item.id)}
-              onPriorityChange={(priority) =>
-                handleUpdatePriority(item.id, priority)
-              }
-            />
-          ))}
-        </Grid>
+        <>
+          <GenreFilterBar>
+            <GenreFilterLabel>Genres</GenreFilterLabel>
+
+            <GenreChips>
+              <GenreChip
+                type="button"
+                $active={genreFilter === "all"}
+                onClick={() => setGenreFilter("all")}
+              >
+                All
+              </GenreChip>
+
+              {availableGenres.map((genre) => (
+                <GenreChip
+                  key={genre}
+                  type="button"
+                  $active={normalizeGenre(genreFilter) === normalizeGenre(genre)}
+                  onClick={() => setGenreFilter(genre)}
+                >
+                  {getGenreLabel(genre)}
+                </GenreChip>
+              ))}
+            </GenreChips>
+          </GenreFilterBar>
+
+          <Grid>
+            {filteredMovies.map((item) => (
+              <MovieCard
+                key={item.id}
+                item={{
+                  ...item,
+                  onPosterError: () => markPosterError(item.id),
+                }}
+                onEdit={() => goToMovie(item.id)}
+                onRemove={() => handleRemoveMovie(item.id)}
+                onPriorityChange={(priority) =>
+                  handleUpdatePriority(item.id, priority)
+                }
+              />
+            ))}
+          </Grid>
+
+          {filteredMovies.length === 0 && (
+            <EmptyState>No movies for this genre in current picks.</EmptyState>
+          )}
+        </>
       )}
     </PageWrap>
   );
@@ -301,10 +423,63 @@ const Reload = styled.button`
   &:hover {
     background: #1f2937;
   }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+`;
+
+const GenreFilterBar = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+`;
+
+const GenreFilterLabel = styled.div`
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  padding-top: 7px;
+  min-width: 54px;
+`;
+
+const GenreChips = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+`;
+
+const GenreChip = styled.button`
+  padding: 7px 10px;
+  border: 1px solid ${({ $active }) => ($active ? "#111827" : "#e5e7eb")};
+  border-radius: 999px;
+  background: ${({ $active }) => ($active ? "#111827" : "#fff")};
+  color: ${({ $active }) => ($active ? "#fff" : "#475569")};
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+
+  &:hover {
+    border-color: #111827;
+  }
 `;
 
 const Grid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 16px;
+`;
+
+const EmptyState = styled.div`
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px dashed #d7dee8;
+  border-radius: 14px;
+  background: #fff;
+  color: #64748b;
+  text-align: center;
+  font-size: 14px;
 `;
