@@ -211,9 +211,10 @@ async function getCycleRandomMovies(items: MovieItem[], count = PICKS_COUNT) {
 }
 
 export default function Page() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [movies, setMovies] = useState<MovieItem[]>([]);
-  const [genreFilter, setGenreFilter] = useState("all");
+ const [isLoading, setIsLoading] = useState(false);
+const [movies, setMovies] = useState([]);
+const [genreFilter, setGenreFilter] = useState("all");
+const [totalTowatchCount, setTotalTowatchCount] = useState(0);
 
   useEffect(() => {
     fetchMovies();
@@ -236,7 +237,7 @@ export default function Page() {
       setIsLoading(false);
       return;
     }
-
+setTotalTowatchCount(data.length);
     const selected = await getCycleRandomMovies(data as MovieItem[], PICKS_COUNT);
 
     const enriched = await Promise.all(
@@ -336,10 +337,10 @@ export default function Page() {
       <Header>
         <TitleWrap>
           <PageTitle>To Watch</PageTitle>
-          <PageText>
-            8 films from your watchlist. Priority films may repeat, others go
-            through a full cycle.
-          </PageText>
+   <PageText>
+  {movies.length || PICKS_COUNT} films shown · {totalTowatchCount} movies in
+  your watchlist. 
+</PageText>
         </TitleWrap>
 
         <Reload onClick={fetchMovies} type="button" disabled={isLoading}>

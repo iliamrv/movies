@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import styled from "styled-components";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
@@ -52,6 +52,16 @@ function formatWatchDate(item) {
   return item.watchTime;
 }
 
+function isTypingTarget(target) {
+  const tagName = target?.tagName?.toLowerCase();
+
+  return (
+    tagName === "input" ||
+    tagName === "textarea" ||
+    target?.isContentEditable
+  );
+}
+
 export default function Table({ newItems = [], onMoviePatch }) {
   const [search, setSearch] = useState("");
   const [quickFilter, setQuickFilter] = useState("all");
@@ -59,6 +69,8 @@ export default function Table({ newItems = [], onMoviePatch }) {
   const [sortDirection, setSortDirection] = useState("desc");
   const [page, setPage] = useState(1);
   const [updatingRewatchId, setUpdatingRewatchId] = useState(null);
+
+  const searchInputRef = useRef(null);
 
   function handleSort(key) {
     setPage(1);
@@ -80,6 +92,12 @@ export default function Table({ newItems = [], onMoviePatch }) {
   function handleSearchChange(e) {
     setSearch(e.target.value);
     setPage(1);
+  }
+
+  function clearSearch() {
+    setSearch("");
+    setPage(1);
+    searchInputRef.current?.focus();
   }
 
   function handleQuickFilterChange(filter) {
@@ -115,7 +133,7 @@ export default function Table({ newItems = [], onMoviePatch }) {
 
     if (query) {
       items = items.filter((item) => {
-        const searchText = getExtendedSearchText(item);
+        const searchText = item.search_text || getExtendedSearchText(item);
         return searchText.includes(query);
       });
     }
@@ -180,6 +198,57 @@ export default function Table({ newItems = [], onMoviePatch }) {
     return filtered.slice(start, end);
   }, [filtered, currentPage]);
 
+  useEffect(() => {
+    function handleKeyDown(event) {
+      const target = event.target;
+
+      if (event.key === "ArrowLeft" && !isTypingTarget(target)) {
+        event.preventDefault();
+        setPage((prev) => Math.max(1, prev - 1));
+        return;
+      }
+
+      if (event.key === "ArrowRight" && !isTypingTarget(target)) {
+        event.preventDefault();
+        setPage((prev) => Math.min(totalPages, prev + 1));
+        return;
+      }
+
+      if (event.key === "/" && !isTypingTarget(target)) {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+        return;
+      }
+
+      if (event.key === "Escape") {
+        if (document.activeElement === searchInputRef.current) {
+          event.preventDefault();
+          clearSearch();
+        }
+
+        return;
+      }
+
+      if (
+        event.key.toLowerCase() === "a" &&
+        !isTypingTarget(target) &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey
+      ) {
+        event.preventDefault();
+        setQuickFilter("all");
+        setPage(1);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [totalPages]);
+
   function renderRating(value) {
     if (value === null || value === undefined || value === "") {
       return <MutedPill>—</MutedPill>;
@@ -206,11 +275,31 @@ export default function Table({ newItems = [], onMoviePatch }) {
     <Wrapper>
       <StickyControls>
         <TopBar>
-          <SearchInput
-            placeholder="Search: title, RU title, cast, genre, comment..."
-            value={search}
-            onChange={handleSearchChange}
-          />
+          <SearchWrap>
+            <SearchInput
+              ref={searchInputRef}
+              placeholder="Search: title, RU title, cast, genre, comment..."
+              value={search}
+              onChange={handleSearchChange}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  clearSearch();
+                }
+              }}
+            />
+
+            {search && (
+              <ClearSearchButton
+                type="button"
+                onClick={clearSearch}
+                aria-label="Clear search"
+                title="Clear search"
+              >
+                ×
+              </ClearSearchButton>
+            )}
+          </SearchWrap>
 
           <ResultCount>
             {filtered.length} {filtered.length === 1 ? "movie" : "movies"}
@@ -364,9 +453,14 @@ const TopBar = styled.div`
   }
 `;
 
+const SearchWrap = styled.div`
+  position: relative;
+  width: 100%;
+`;
+
 const SearchInput = styled.input`
   width: 100%;
-  padding: 12px 14px;
+  padding: 12px 42px 12px 14px;
   border-radius: 12px;
   border: 1px solid #d7dee8;
   background: #fff;
@@ -376,6 +470,30 @@ const SearchInput = styled.input`
   &:focus {
     border-color: #b8c7dc;
     box-shadow: 0 0 0 4px rgba(191, 208, 229, 0.25);
+  }
+`;
+
+const ClearSearchButton = styled.button`
+  position: absolute;
+  top: 50%;
+  right: 9px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+
+  &:hover {
+    background: #e5e7eb;
+    color: #111827;
   }
 `;
 
