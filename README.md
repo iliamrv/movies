@@ -6,7 +6,7 @@ MovieBase is an app for finding information about the movies you've watched. You
 
 The idea for the app came about as follows: I've watched an awful lot of movies over time.
 
-At some point I started keeping a list to solve a number of problems:
+At some point I started keeping a list to solve a number of problems -
 
 - The more you watch, the less you remember whether you watched or not.
 - I’d like to write down your impressions and evaluations.
