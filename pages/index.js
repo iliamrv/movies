@@ -5,7 +5,7 @@ import { useRouter } from "next/router";
 import Loading from "./loading";
 import Table from "../components/Table";
 import { Button } from "../styles/globalStyles";
-import { getWatchedMovies } from "../src/api/movies";
+import { getLibraryMovies } from "../src/api/movies";
 
 export default function LibraryPage() {
   const router = useRouter();
@@ -20,7 +20,7 @@ export default function LibraryPage() {
   async function fetchMovies() {
     setIsLoading(true);
 
-    const { data, error } = await getWatchedMovies(5000);
+    const { data, error } = await getLibraryMovies(5000);
 
     if (!error && data) {
       setMovies(data);

@@ -4,7 +4,6 @@ import {
   Film,
   Plus,
   Clock3,
-  BarChart3,
   Library,
   Images,
 } from "lucide-react";
@@ -56,16 +55,6 @@ function Navbar() {
               </Button>
             </a>
           </Link>
-
-          {/* <Link href="/stats" passHref legacyBehavior>
-            <a>
-              <Button as="span" $secondary={!isActive("/stats")}>
-                <BarChart3 size={16} />
-                Stats
-              </Button>
-            </a>
-          </Link> */}
-
           <Link href="/createmovie" passHref legacyBehavior>
             <a>
               <Button as="span">
@@ -74,9 +63,6 @@ function Navbar() {
               </Button>
             </a>
           </Link>
-
-
-
         </StyledButtons>
       </HeaderInner>
     </HeaderOuter>

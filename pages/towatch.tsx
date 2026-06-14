@@ -39,6 +39,7 @@ type MovieItem = {
   poster_url?: string | null;
   posterError?: boolean;
   onPosterError?: () => void;
+  animationIndex?: number;
 };
 
 function getMovieWeight(movie: MovieItem) {
@@ -81,9 +82,7 @@ function excludeAlreadyPicked(items: MovieItem[], pickedMovies: MovieItem[]) {
 }
 
 function normalizeGenre(value: string | null | undefined) {
-  return String(value || "")
-    .trim()
-    .toLowerCase();
+  return String(value || "").trim().toLowerCase();
 }
 
 function getMovieGenres(item: MovieItem): string[] {
@@ -94,9 +93,7 @@ function getMovieGenres(item: MovieItem): string[] {
   }
 
   if (item?.Genre) {
-    return item.Genre.split(",")
-      .map((genre) => genre.trim())
-      .filter(Boolean);
+    return item.Genre.split(",").map((genre) => genre.trim()).filter(Boolean);
   }
 
   if (item?.genre) {
@@ -124,7 +121,6 @@ function getGenreLabel(genre: string) {
     fantasy: "Fantasy",
     "science fiction": "Sci-Fi",
     sci_fi: "Sci-Fi",
-
     драма: "Драма",
     комедия: "Комедия",
     криминал: "Криминал",
@@ -211,10 +207,10 @@ async function getCycleRandomMovies(items: MovieItem[], count = PICKS_COUNT) {
 }
 
 export default function Page() {
- const [isLoading, setIsLoading] = useState(false);
-const [movies, setMovies] = useState([]);
-const [genreFilter, setGenreFilter] = useState("all");
-const [totalTowatchCount, setTotalTowatchCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [movies, setMovies] = useState([]);
+  const [genreFilter, setGenreFilter] = useState("all");
+  const [totalTowatchCount, setTotalTowatchCount] = useState(0);
 
   useEffect(() => {
     fetchMovies();
@@ -237,31 +233,54 @@ const [totalTowatchCount, setTotalTowatchCount] = useState(0);
       setIsLoading(false);
       return;
     }
-setTotalTowatchCount(data.length);
+
+    setTotalTowatchCount(data.length);
     const selected = await getCycleRandomMovies(data as MovieItem[], PICKS_COUNT);
 
+    const baseMovies = selected.map((movie) => ({
+      ...movie,
+      posterError: false,
+    }));
+
+    setMovies(
+      baseMovies.map((movie, index) => ({
+        ...movie,
+        animationIndex: index,
+      })) as MovieItem[]
+    );
+    setGenreFilter("all");
+    setIsLoading(false);
+
+    void enrichVisibleMovies(
+      baseMovies.map((movie, index) => ({
+        ...movie,
+        animationIndex: index,
+      })) as MovieItem[]
+    );
+  }
+
+  async function enrichVisibleMovies(items: MovieItem[]) {
     const enriched = await Promise.all(
-      selected.map(async (movie) => {
+      items.map(async (movie) => {
         if (!movie.imdb) {
-          return {
-            ...movie,
-            posterError: false,
-          };
+          return movie;
         }
 
         const imdbData = await fetchOmdbById(movie.imdb);
-        const merged = mergeMovieData(movie, imdbData);
+
+        if (!imdbData) {
+          return movie;
+        }
 
         return {
-          ...merged,
+          ...mergeMovieData(movie, imdbData),
           posterError: false,
+          animationIndex: movie.animationIndex,
         };
       })
     );
 
     setMovies(enriched as MovieItem[]);
-    setGenreFilter("all");
-    setIsLoading(false);
   }
 
   function markPosterError(id: MovieItem["id"]) {
@@ -337,10 +356,10 @@ setTotalTowatchCount(data.length);
       <Header>
         <TitleWrap>
           <PageTitle>To Watch</PageTitle>
-   <PageText>
-  {movies.length || PICKS_COUNT} films shown · {totalTowatchCount} movies in
-  your watchlist. 
-</PageText>
+          <PageText>
+            {movies.length} films shown · {totalTowatchCount} movies in your
+            watchlist.
+          </PageText>
         </TitleWrap>
 
         <Reload onClick={fetchMovies} type="button" disabled={isLoading}>
@@ -379,24 +398,37 @@ setTotalTowatchCount(data.length);
           </GenreFilterBar>
 
           <Grid>
-            {filteredMovies.map((item) => (
-              <MovieCard
+            {filteredMovies.map((item, index) => (
+              <AnimatedCardWrap
                 key={item.id}
-                item={{
-                  ...item,
-                  onPosterError: () => markPosterError(item.id),
+                style={{
+                  animationDelay: `${Math.min(
+                    item.animationIndex ?? index,
+                    7
+                  ) * 45}ms`,
                 }}
-                onEdit={() => goToMovie(item.id)}
-                onRemove={() => handleRemoveMovie(item.id)}
-                onPriorityChange={(priority: Priority) =>
-                  handleUpdatePriority(item.id, priority)
-                }
-              />
+              >
+                <MovieCard
+                  item={{
+                    ...item,
+                    onPosterError: () => markPosterError(item.id),
+                  }}
+                  onEdit={() => goToMovie(item.id)}
+                  onRemove={() => handleRemoveMovie(item.id)}
+                  onPriorityChange={(priority: Priority) =>
+                    handleUpdatePriority(item.id, priority)
+                  }
+                />
+              </AnimatedCardWrap>
             ))}
           </Grid>
 
           {filteredMovies.length === 0 && (
-            <EmptyState>No movies for this genre in current picks.</EmptyState>
+            <EmptyState>
+              {totalTowatchCount === 0
+                ? "Your watchlist is empty."
+                : "No movies for this genre in current picks."}
+            </EmptyState>
           )}
         </>
       )}
@@ -495,6 +527,26 @@ const Grid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 16px;
+`;
+
+const AnimatedCardWrap = styled.div`
+  opacity: 0;
+  transform: translateY(10px) scale(0.985);
+  animation: cardReveal 320ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  will-change: opacity, transform;
+
+  @keyframes cardReveal {
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
 `;
 
 const EmptyState = styled.div`

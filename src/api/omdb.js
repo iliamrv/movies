@@ -1,91 +1,141 @@
-const API_KEY = "8aab931f"; // позже можно вынести в .env
+const API_KEY = process.env.OMDB_API_KEY;
 
-// 👉 Получить фильм по IMDb ID
+function isBrowser() {
+  return typeof window !== "undefined";
+}
+
+function getOmdbUrl(searchParams) {
+  if (!API_KEY) {
+    throw new Error("Missing OMDB_API_KEY");
+  }
+
+  return `https://www.omdbapi.com/?${searchParams}&apikey=${API_KEY}`;
+}
+
+async function fetchOmdbDirect(searchParams) {
+  const res = await fetch(getOmdbUrl(searchParams));
+  return res.json();
+}
+
+async function fetchOmdbViaApi(params) {
+  const response = await fetch("/api/omdb", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(params),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || "OMDb proxy request failed");
+  }
+
+  return data;
+}
+
+async function requestOmdb(params) {
+  if (isBrowser()) {
+    return fetchOmdbViaApi(params);
+  }
+
+  if (params.imdb) {
+    return fetchOmdbDirect(`i=${encodeURIComponent(params.imdb)}`);
+  }
+
+  if (params.exactTitle) {
+    const searchParams = new URLSearchParams({
+      t: params.exactTitle,
+    });
+
+    if (params.year) {
+      searchParams.set("y", String(params.year));
+    }
+
+    return fetchOmdbDirect(searchParams.toString());
+  }
+
+  if (params.search) {
+    return fetchOmdbDirect(`s=${encodeURIComponent(params.search)}`);
+  }
+
+  throw new Error("Unsupported OMDb request");
+}
+
 export async function fetchOmdbById(imdb) {
-	if (!imdb) return null;
+  if (!imdb) return null;
 
-	try {
-		const res = await fetch(
-			`https://www.omdbapi.com/?i=${encodeURIComponent(imdb)}&apikey=${API_KEY}`
-		);
+  try {
+    const data = await requestOmdb({
+      imdb: String(imdb).trim(),
+    });
 
-		const data = await res.json();
+    if (data.Response === "True") {
+      return data;
+    }
 
-		if (data.Response === "True") {
-			return data;
-		}
-
-		console.log("OMDb error:", data.Error);
-		return null;
-	} catch (e) {
-		console.log("OMDb fetch failed:", e);
-		return null;
-	}
+    console.log("OMDb error:", data.Error);
+    return null;
+  } catch (e) {
+    console.log("OMDb fetch failed:", e);
+    return null;
+  }
 }
 
-// 👉 Поиск фильма (используется в edit page)
 export async function searchOmdb(title, year) {
-	if (!title) return [];
+  if (!title) return [];
 
-	try {
-		// 1. Сначала пробуем точное совпадение
-		const exactUrl = year
-			? `https://www.omdbapi.com/?t=${encodeURIComponent(
-				title
-			)}&y=${encodeURIComponent(year)}&apikey=${API_KEY}`
-			: `https://www.omdbapi.com/?t=${encodeURIComponent(
-				title
-			)}&apikey=${API_KEY}`;
+  try {
+    const exactData = await requestOmdb({
+      exactTitle: title,
+      year,
+    });
 
-		const exactRes = await fetch(exactUrl);
-		const exactData = await exactRes.json();
+    if (exactData.Response === "True") {
+      return [
+        {
+          imdbID: exactData.imdbID,
+          Title: exactData.Title,
+          Year: exactData.Year,
+          Type: exactData.Type,
+        },
+      ];
+    }
 
-		if (exactData.Response === "True") {
-			return [
-				{
-					imdbID: exactData.imdbID,
-					Title: exactData.Title,
-					Year: exactData.Year,
-					Type: exactData.Type,
-				},
-			];
-		}
+    const query = year ? `${title} ${year}` : title;
+    const data = await requestOmdb({
+      search: query,
+    });
 
-		// 2. Если нет — обычный поиск
-		const query = year ? `${title} ${year}` : title;
+    if (data.Response === "True" && Array.isArray(data.Search)) {
+      return data.Search;
+    }
 
-		const res = await fetch(
-			`https://www.omdbapi.com/?s=${encodeURIComponent(query)}&apikey=${API_KEY}`
-		);
-
-		const data = await res.json();
-
-		if (data.Response === "True" && Array.isArray(data.Search)) {
-			return data.Search;
-		}
-
-		console.log("OMDb search error:", data.Error);
-		return [];
-	} catch (e) {
-		console.log("OMDb search failed:", e);
-		return [];
-	}
+    console.log("OMDb search error:", data.Error);
+    return [];
+  } catch (e) {
+    console.log("OMDb search failed:", e);
+    return [];
+  }
 }
 
-// 👉 Объединить данные БД + OMDb
 export function mergeMovieData(movie, imdbData) {
-	if (!imdbData) return movie;
+  if (!imdbData) return movie;
 
-	return {
-		...movie,
-		...imdbData,
+  const nextDirector =
+    imdbData.Director && imdbData.Director !== "N/A"
+      ? imdbData.Director
+      : movie.director;
 
-		// 🔥 сохраняем fallback если OMDb пустой
-		title: imdbData.Title || movie.title,
-		year:
-			imdbData.Year && /^\d{4}$/.test(imdbData.Year)
-				? Number(imdbData.Year)
-				: movie.year,
-		director: imdbData.Director || movie.director,
-	};
+  return {
+    ...movie,
+    ...imdbData,
+    title: imdbData.Title || movie.title,
+    year:
+      imdbData.Year && /^\d{4}$/.test(imdbData.Year)
+        ? Number(imdbData.Year)
+        : movie.year,
+    director: nextDirector,
+  };
 }

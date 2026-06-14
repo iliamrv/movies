@@ -17,6 +17,7 @@ import {
   getMovieDirector,
   getMovieGenres,
   getMovieYear,
+  getLatestWatchDate,
 } from "../src/utils/movieUtils";
 
 const PAGE_SIZE = 25;
@@ -60,6 +61,18 @@ function isTypingTarget(target) {
     tagName === "textarea" ||
     target?.isContentEditable
   );
+}
+
+function getDisplayWatchDate(item) {
+  const latestWatchDate = getLatestWatchDate(item);
+
+  if (!latestWatchDate) return "-";
+
+  if (item.watch_date_precision === "year") {
+    return String(latestWatchDate).slice(0, 4);
+  }
+
+  return latestWatchDate;
 }
 
 export default function Table({ newItems = [], onMoviePatch }) {
@@ -133,7 +146,8 @@ export default function Table({ newItems = [], onMoviePatch }) {
 
     if (query) {
       items = items.filter((item) => {
-        const searchText = item.search_text || getExtendedSearchText(item);
+        const searchText =
+          item.search_text || getExtendedSearchText(item, { includeOverview: false });
         return searchText.includes(query);
       });
     }
@@ -175,6 +189,9 @@ export default function Table({ newItems = [], onMoviePatch }) {
       }
 
       if (sortKey === "watchTime") {
+        aValue = getLatestWatchDate(a);
+        bValue = getLatestWatchDate(b);
+
         aValue = aValue ? new Date(aValue).getTime() : -Infinity;
         bValue = bValue ? new Date(bValue).getTime() : -Infinity;
       }
@@ -383,7 +400,7 @@ export default function Table({ newItems = [], onMoviePatch }) {
                   <td>{getMovieDirector(item)}</td>
                   <td>{getMovieYear(item)}</td>
                   <td>{renderRating(item.rating)}</td>
-                  <td>{formatWatchDate(item)}</td>
+                  <td>{getDisplayWatchDate(item)}</td>
                 </TableRow>
               );
             })}

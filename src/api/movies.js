@@ -21,12 +21,14 @@ export async function getLibraryMovies(limit = 1000) {
       year,
       rating,
       watchTime,
+      watch_dates,
       watch_date_precision,
       imdb,
       comment,
       rewatch_mark,
       tags,
-      search_text
+      search_text,
+      external_meta
     `)
 		.eq("watched_mark", true)
 		.order("watchTime", { ascending: false, nullsFirst: false })
@@ -40,7 +42,17 @@ export async function getMovieById(id) {
 export async function getUnwatchedMovies() {
 	return supabase
 		.from(TABLE_NAME)
-		.select("*")
+		.select(`
+      id,
+      title,
+      director,
+      year,
+      imdb,
+      priority,
+      watched_mark,
+      towatch_cycle_seen_at,
+      external_meta
+    `)
 		.eq("watched_mark", false);
 }
 

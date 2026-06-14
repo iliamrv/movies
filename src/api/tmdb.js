@@ -67,7 +67,6 @@ async function fetchTmdbMovieMeta(tmdbId, cleanImdbId) {
 			id: person.id,
 			name: person.name,
 			originalName: person.original_name,
-			character: person.character,
 			order: person.order,
 		}))
 		: [];
@@ -82,24 +81,11 @@ async function fetchTmdbMovieMeta(tmdbId, cleanImdbId) {
 			}))
 		: [];
 
-	const alternativeTitles = Array.isArray(detailsRu?.alternative_titles?.titles)
-		? detailsRu.alternative_titles.titles.map((item) => ({
-			country: item.iso_3166_1,
-			title: item.title,
-			type: item.type || "",
-		}))
-		: [];
-
-	const ruAlternativeTitles = alternativeTitles
-		.filter((item) => item.country === "RU" || item.country === "SU")
-		.map((item) => item.title);
-
 	return {
 		source: "tmdb",
 		fetchedAt: new Date().toISOString(),
 
 		tmdb: {
-			mediaType: "movie",
 			id: tmdbId,
 			imdbId: cleanImdbId,
 
@@ -134,15 +120,8 @@ async function fetchTmdbMovieMeta(tmdbId, cleanImdbId) {
 
 			originalLanguage: detailsRu.original_language || "",
 
-			productionCountries: Array.isArray(detailsRu.production_countries)
-				? detailsRu.production_countries.map((country) => country.name)
-				: [],
-
 			directors,
 			cast: topCast,
-
-			alternativeTitles,
-			ruAlternativeTitles,
 		},
 	};
 }
@@ -162,7 +141,6 @@ async function fetchTmdbTvMeta(tmdbId, cleanImdbId) {
 			id: person.id,
 			name: person.name,
 			originalName: person.original_name,
-			character: person.character,
 			order: person.order,
 		}))
 		: [];
@@ -175,18 +153,6 @@ async function fetchTmdbTvMeta(tmdbId, cleanImdbId) {
 		}))
 		: [];
 
-	const alternativeTitles = Array.isArray(detailsRu?.alternative_titles?.results)
-		? detailsRu.alternative_titles.results.map((item) => ({
-			country: item.iso_3166_1,
-			title: item.title,
-			type: item.type || "",
-		}))
-		: [];
-
-	const ruAlternativeTitles = alternativeTitles
-		.filter((item) => item.country === "RU" || item.country === "SU")
-		.map((item) => item.title);
-
 	const runtime = Array.isArray(detailsRu.episode_run_time)
 		? detailsRu.episode_run_time[0] || null
 		: null;
@@ -196,7 +162,6 @@ async function fetchTmdbTvMeta(tmdbId, cleanImdbId) {
 		fetchedAt: new Date().toISOString(),
 
 		tmdb: {
-			mediaType: "tv",
 			id: tmdbId,
 			imdbId: cleanImdbId,
 
@@ -231,20 +196,8 @@ async function fetchTmdbTvMeta(tmdbId, cleanImdbId) {
 
 			originalLanguage: detailsRu.original_language || "",
 
-			productionCountries: Array.isArray(detailsRu.production_countries)
-				? detailsRu.production_countries.map((country) => country.name)
-				: [],
-
 			directors: creators,
-			creators,
 			cast: topCast,
-
-			numberOfSeasons: detailsRu.number_of_seasons || null,
-			numberOfEpisodes: detailsRu.number_of_episodes || null,
-			status: detailsRu.status || "",
-
-			alternativeTitles,
-			ruAlternativeTitles,
 		},
 	};
 }

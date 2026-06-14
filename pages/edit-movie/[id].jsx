@@ -1,30 +1,23 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import styled from "styled-components";
-
-import {
-  Search,
-  Zap,
-  CirclePlus,
-  Trash2,
-  ArrowLeft,
-  Sparkles,
-} from "lucide-react";
+import { Search, Zap, CirclePlus, Trash2, ArrowLeft } from "lucide-react";
 
 import { Button } from "../../styles/globalStyles";
-
 import {
   getMovieById,
   updateMovieById,
   deleteMovieById,
 } from "../../src/api/movies";
-
 import { fetchOmdbById, searchOmdb, mergeMovieData } from "../../src/api/omdb";
 import { buildMovieSearchText } from "../../src/utils/buildMovieSearchText";
+import { getMovieDirector } from "../../src/utils/movieUtils";
+import { buildWatchDatePayload } from "../../src/utils/movieFormUtils";
 
 export default function EditMovie() {
   const router = useRouter();
   const { id } = router.query;
+  const today = new Date().toISOString().slice(0, 10);
 
   const [movieData, setMovieData] = useState({
     title: "",
@@ -37,28 +30,25 @@ export default function EditMovie() {
     watchDatePrecision: "exact",
     watchYear: "",
     tags: [],
+    watchDates: [],
     external_meta: null,
   });
-
+  const [rewatchDate, setRewatchDate] = useState(today);
+  const [tagInput, setTagInput] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState("");
 
-  const [isImprovingComment, setIsImprovingComment] = useState(false);
-  const [aiCommentDraft, setAiCommentDraft] = useState("");
-  const [aiTagOptions, setAiTagOptions] = useState([]);
-  const [selectedAiTags, setSelectedAiTags] = useState([]);
-
   useEffect(() => {
     if (id) fetchMovie(id);
   }, [id]);
 
   async function fetchMovie(movieId) {
-    const { data, error } = await getMovieById(movieId);
+    const { data, error: fetchError } = await getMovieById(movieId);
 
-    if (error) {
+    if (fetchError) {
       setError("Failed to load movie");
       return;
     }
@@ -67,13 +57,15 @@ export default function EditMovie() {
     const savedWatchYear = data.watchTime
       ? String(data.watchTime).slice(0, 4)
       : data.year
-      ? String(data.year)
-      : "";
+        ? String(data.year)
+        : "";
+
+    const director = getMovieDirector(data);
 
     setMovieData({
       title: data.title || "",
       imdb: data.imdb || "",
-      director: data.director || "",
+      director: director === "-" ? "" : director,
       year: data.year || "",
       personalRating: data.rating || "",
       comment: data.comment || "",
@@ -81,8 +73,11 @@ export default function EditMovie() {
       watchDatePrecision: savedPrecision,
       watchYear: savedWatchYear,
       tags: Array.isArray(data.tags) ? data.tags : [],
+      watchDates: Array.isArray(data.watch_dates) ? data.watch_dates : [],
       external_meta: data.external_meta || null,
     });
+
+    setRewatchDate(today);
   }
 
   async function handleFetchFromImdb() {
@@ -97,12 +92,12 @@ export default function EditMovie() {
 
     const merged = mergeMovieData(movieData, imdbData);
 
-    setMovieData({
-      ...movieData,
+    setMovieData((prev) => ({
+      ...prev,
       title: merged.title,
       year: merged.year,
-      director: merged.director,
-    });
+      director: merged.director && merged.director !== "N/A" ? merged.director : "",
+    }));
   }
 
   async function handleSearch() {
@@ -133,107 +128,15 @@ export default function EditMovie() {
 
     const merged = mergeMovieData(movieData, imdbData);
 
-    setMovieData({
-      ...movieData,
+    setMovieData((prev) => ({
+      ...prev,
       imdb: item.imdbID,
       title: merged.title,
       year: merged.year,
-      director: merged.director,
-    });
-
-    setSearchResults([]);
-  }
-
-  async function handleImproveComment() {
-    const rawComment = movieData.comment.trim();
-
-    if (!rawComment) {
-      setError("Write a raw comment first");
-      return;
-    }
-
-    setIsImprovingComment(true);
-    setError("");
-    setAiCommentDraft("");
-    setAiTagOptions([]);
-    setSelectedAiTags([]);
-
-    try {
-      const response = await fetch("/api/improve-movie-comment", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          rawComment,
-          movie: {
-            title: movieData.title,
-            director: movieData.director,
-            year: movieData.year,
-            rating: movieData.personalRating,
-            tags: movieData.tags,
-          },
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to improve comment");
-      }
-
-      setAiCommentDraft(data.comment || rawComment);
-
-      const cleanTags = Array.isArray(data.tags)
-        ? data.tags
-            .map((tag) => String(tag).trim().toLowerCase())
-            .filter(Boolean)
-            .slice(0, 10)
-        : [];
-
-      setAiTagOptions(cleanTags);
-      setSelectedAiTags(cleanTags.slice(0, 3));
-    } catch (error) {
-      console.error(error);
-      setError("Failed to improve comment");
-    } finally {
-      setIsImprovingComment(false);
-    }
-  }
-
-  function toggleAiTag(tag) {
-    setSelectedAiTags((prev) => {
-      if (prev.includes(tag)) {
-        return prev.filter((item) => item !== tag);
-      }
-
-      if (prev.length >= 3) {
-        return prev;
-      }
-
-      return [...prev, tag];
-    });
-  }
-
-  function applyAiSuggestion() {
-    const existingTags = Array.isArray(movieData.tags) ? movieData.tags : [];
-
-    const nextTags = Array.from(
-      new Set([
-        ...existingTags.map((tag) => String(tag).trim().toLowerCase()),
-        ...selectedAiTags.map((tag) => String(tag).trim().toLowerCase()),
-      ])
-    ).filter(Boolean);
-
-    setMovieData((prev) => ({
-      ...prev,
-      comment: aiCommentDraft || prev.comment,
-      tags: nextTags,
+      director: merged.director && merged.director !== "N/A" ? merged.director : "",
     }));
 
-    setAiCommentDraft("");
-    setAiTagOptions([]);
-    setSelectedAiTags([]);
+    setSearchResults([]);
   }
 
   function removeTag(tagToRemove) {
@@ -243,20 +146,52 @@ export default function EditMovie() {
     }));
   }
 
-  async function handleUpdate(e) {
-    e.preventDefault();
+  function addTag() {
+    const cleanTag = String(tagInput || "").trim().toLowerCase();
+
+    if (!cleanTag) return;
+
+    setMovieData((prev) => ({
+      ...prev,
+      tags: Array.from(new Set([...(prev.tags || []), cleanTag])),
+    }));
+    setTagInput("");
+  }
+
+  function addRewatchDate() {
+    if (!rewatchDate) {
+      setError("Choose a rewatch date");
+      return;
+    }
+
+    setError("");
+
+    setMovieData((prev) => {
+      const currentDates = Array.isArray(prev.watchDates) ? prev.watchDates : [];
+
+      if (currentDates.includes(rewatchDate)) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        watchDates: [...currentDates, rewatchDate].sort((a, b) =>
+          b.localeCompare(a)
+        ),
+      };
+    });
+  }
+
+  async function handleUpdate(event) {
+    event.preventDefault();
     setIsLoading(true);
     setError("");
 
-    let nextWatchTime = null;
-
-    if (movieData.watchDatePrecision === "exact") {
-      nextWatchTime = movieData.watchTime || null;
-    }
-
-    if (movieData.watchDatePrecision === "year") {
-      nextWatchTime = movieData.watchYear ? `${movieData.watchYear}-01-01` : null;
-    }
+    const nextWatchTime = buildWatchDatePayload({
+      watchDatePrecision: movieData.watchDatePrecision,
+      watchTime: movieData.watchTime,
+      watchYear: movieData.watchYear,
+    });
 
     const payload = {
       title: movieData.title,
@@ -270,6 +205,9 @@ export default function EditMovie() {
       watchTime: nextWatchTime,
       watch_date_precision: movieData.watchDatePrecision,
       tags: Array.isArray(movieData.tags) ? movieData.tags : [],
+      watch_dates: Array.isArray(movieData.watchDates)
+        ? movieData.watchDates
+        : [],
     };
 
     payload.search_text = buildMovieSearchText({
@@ -277,12 +215,12 @@ export default function EditMovie() {
       external_meta: movieData.external_meta,
     });
 
-    const { error } = await updateMovieById(id, payload);
+    const { error: updateError } = await updateMovieById(id, payload);
 
     setIsLoading(false);
 
-    if (error) {
-      setError(error.message);
+    if (updateError) {
+      setError(updateError.message);
       return;
     }
 
@@ -295,11 +233,11 @@ export default function EditMovie() {
 
     setIsDeleting(true);
 
-    const { error } = await deleteMovieById(id);
+    const { error: deleteError } = await deleteMovieById(id);
 
     setIsDeleting(false);
 
-    if (error) {
+    if (deleteError) {
       setError("Delete failed");
       return;
     }
@@ -435,8 +373,8 @@ export default function EditMovie() {
             </ApproxCheckbox>
 
             <ApproxTextWrap>
-              <ApproxTitle>Не помню точную дату</ApproxTitle>
-              <ApproxHint>Указываю только год просмотра</ApproxHint>
+              <ApproxTitle>I do not remember the exact date</ApproxTitle>
+              <ApproxHint>I only want to save the watch year</ApproxHint>
             </ApproxTextWrap>
           </ApproxDateCard>
 
@@ -471,13 +409,44 @@ export default function EditMovie() {
           )}
         </DateBlock>
 
+        <RewatchBlock>
+          <RewatchTop>
+            <div>
+              <Label>Rewatch dates</Label>
+              <RewatchHint>
+                Add extra watch dates here. Your main watch date above stays as-is.
+              </RewatchHint>
+            </div>
+          </RewatchTop>
+
+          <RewatchControls>
+            <SmallDateInput
+              type="date"
+              value={rewatchDate}
+              onChange={(e) => setRewatchDate(e.target.value)}
+            />
+
+            <SecondaryButton type="button" onClick={addRewatchDate}>
+              Add date
+            </SecondaryButton>
+          </RewatchControls>
+
+          {movieData.watchDates.length > 0 ? (
+            <WatchDatesList>
+              {movieData.watchDates.map((date) => (
+                <WatchDateChip key={date}>{date}</WatchDateChip>
+              ))}
+            </WatchDatesList>
+          ) : (
+            <TagHint>No rewatch dates yet</TagHint>
+          )}
+        </RewatchBlock>
+
         <CommentBlock>
           <CommentTop>
             <CommentTitleWrap>
               <Label>Comment</Label>
-              <CommentHint>
-                Write a quick raw note — AI can polish it and suggest tags.
-              </CommentHint>
+              <CommentHint>Short personal note about the movie.</CommentHint>
             </CommentTitleWrap>
           </CommentTop>
 
@@ -486,72 +455,29 @@ export default function EditMovie() {
             onChange={(e) =>
               setMovieData({ ...movieData, comment: e.target.value })
             }
-            placeholder="Write a raw note, for example: strong atmosphere, a bit slow, great ending..."
+            placeholder="Short personal note..."
           />
-
-          <CommentActions>
-            <ImproveButton
-              type="button"
-              onClick={handleImproveComment}
-              disabled={isImprovingComment || !movieData.comment.trim()}
-            >
-              <Sparkles size={15} />
-              {isImprovingComment ? "Improving..." : "Improve with AI"}
-            </ImproveButton>
-          </CommentActions>
-
-          {aiCommentDraft && (
-            <AiSuggestionBox>
-              <SuggestionLabel>Suggested comment</SuggestionLabel>
-
-              <CommentTextArea
-                value={aiCommentDraft}
-                onChange={(e) => setAiCommentDraft(e.target.value)}
-              />
-
-              <SuggestionLabel>
-                Suggested tags — choose up to 3 ({selectedAiTags.length}/3)
-              </SuggestionLabel>
-
-              <TagOptions>
-                {aiTagOptions.map((tag) => (
-                  <TagOption
-                    key={tag}
-                    type="button"
-                    $active={selectedAiTags.includes(tag)}
-                    onClick={() => toggleAiTag(tag)}
-                  >
-                    {tag}
-                  </TagOption>
-                ))}
-              </TagOptions>
-
-              <SuggestionActions>
-                <UseSuggestionButton
-                  type="button"
-                  onClick={applyAiSuggestion}
-                  disabled={!aiCommentDraft.trim()}
-                >
-                  Use suggestion
-                </UseSuggestionButton>
-
-                <SecondaryButton
-                  type="button"
-                  onClick={() => {
-                    setAiCommentDraft("");
-                    setAiTagOptions([]);
-                    setSelectedAiTags([]);
-                  }}
-                >
-                  Discard
-                </SecondaryButton>
-              </SuggestionActions>
-            </AiSuggestionBox>
-          )}
         </CommentBlock>
 
         <TagsBlock>
           <Label>Tags</Label>
+
+          <TagInputRow>
+            <TagInput
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              placeholder="Add tag"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addTag();
+                }
+              }}
+            />
+            <SecondaryButton type="button" onClick={addTag}>
+              Add tag
+            </SecondaryButton>
+          </TagInputRow>
 
           {movieData.tags.length > 0 ? (
             <CurrentTags>
@@ -692,11 +618,6 @@ const RatingButton = styled.button`
   color: ${({ $active }) => ($active ? "#fff" : "#111827")};
   font-weight: 700;
   cursor: pointer;
-
-  &:hover {
-    border-color: #111827;
-    background: ${({ $active }) => ($active ? "#111827" : "#f8fafc")};
-  }
 `;
 
 const RatingHint = styled.div`
@@ -726,18 +647,10 @@ const ApproxDateCard = styled.button`
   color: #111827;
   cursor: pointer;
   text-align: left;
-  transition: border-color 0.15s ease, background 0.15s ease,
-    box-shadow 0.15s ease;
 
   &:hover {
     border-color: #111827;
     background: #f8fafc;
-  }
-
-  &:focus {
-    outline: none;
-    border-color: #111827;
-    box-shadow: 0 0 0 4px rgba(17, 24, 39, 0.06);
   }
 `;
 
@@ -784,11 +697,63 @@ const YearInput = styled.input`
   font-family: inherit;
   font-size: 14px;
   outline: none;
+`;
 
-  &:focus {
-    border-color: #111827;
-    box-shadow: 0 0 0 4px rgba(17, 24, 39, 0.06);
-  }
+const RewatchBlock = styled.div`
+  margin-bottom: 24px;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #fcfcfd;
+`;
+
+const RewatchTop = styled.div`
+  margin-bottom: 12px;
+`;
+
+const RewatchHint = styled.div`
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.4;
+`;
+
+const RewatchControls = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+`;
+
+const SmallDateInput = styled.input`
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #111827;
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+`;
+
+const WatchDatesList = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+`;
+
+const WatchDateChip = styled.span`
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
 `;
 
 const CommentBlock = styled.div`
@@ -829,131 +794,21 @@ const CommentTextArea = styled.textarea`
   box-sizing: border-box;
   outline: none;
   font-family: inherit;
-
-  &:focus {
-    border-color: #111827;
-    box-shadow: 0 0 0 4px rgba(17, 24, 39, 0.06);
-  }
-
-  &::placeholder {
-    color: #94a3b8;
-  }
-`;
-
-const CommentActions = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 12px;
-
-  @media (max-width: 640px) {
-    justify-content: stretch;
-  }
-`;
-
-const ImproveButton = styled.button`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 38px;
-  padding: 0 14px;
-  border: 0;
-  border-radius: 999px;
-  background: #111827;
-  color: #fff;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-
-  &:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-  }
-
-  @media (max-width: 640px) {
-    width: 100%;
-  }
-`;
-
-const AiSuggestionBox = styled.div`
-  margin-top: 14px;
-  padding: 14px;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  background: #f8fafc;
-`;
-
-const SuggestionLabel = styled.div`
-  margin: 12px 0 8px;
-  color: #64748b;
-  font-size: 13px;
-  font-weight: 700;
-
-  &:first-child {
-    margin-top: 0;
-  }
-`;
-
-const TagOptions = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-`;
-
-const TagOption = styled.button`
-  padding: 7px 10px;
-  border-radius: 999px;
-  border: 1px solid ${({ $active }) => ($active ? "#111827" : "#d1d5db")};
-  background: ${({ $active }) => ($active ? "#111827" : "#fff")};
-  color: ${({ $active }) => ($active ? "#fff" : "#334155")};
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-
-  &:hover {
-    border-color: #111827;
-  }
-`;
-
-const SuggestionActions = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-`;
-
-const UseSuggestionButton = styled.button`
-  min-height: 36px;
-  padding: 0 14px;
-  border: 0;
-  border-radius: 999px;
-  background: #111827;
-  color: #fff;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-
-  &:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-  }
-`;
-
-const SecondaryButton = styled.button`
-  min-height: 36px;
-  padding: 0 14px;
-  border: 1px solid #d1d5db;
-  border-radius: 999px;
-  background: #fff;
-  color: #111827;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
 `;
 
 const TagsBlock = styled.div`
   margin-bottom: 20px;
+`;
+
+const TagInputRow = styled.div`
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+`;
+
+const TagInput = styled(Input)`
+  flex: 1 1 220px;
 `;
 
 const CurrentTags = styled.div`
@@ -982,14 +837,22 @@ const RemoveTagButton = styled.button`
   font-size: 16px;
   line-height: 1;
   cursor: pointer;
-
-  &:hover {
-    color: #111827;
-  }
 `;
 
 const TagHint = styled.div`
   margin-top: 8px;
   color: #94a3b8;
   font-size: 13px;
+`;
+
+const SecondaryButton = styled.button`
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  background: #fff;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
 `;
