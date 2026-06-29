@@ -1,5 +1,6 @@
 import supabase from "../../src/supabase";
 import { fetchTmdbMetaByImdbId } from "../../src/api/tmdb";
+import { buildMovieSearchText } from "../../src/utils/buildMovieSearchText";
 
 export default async function handler(req, res) {
 	if (req.method !== "POST") {
@@ -15,7 +16,7 @@ export default async function handler(req, res) {
 
 		const { data: movie, error: movieError } = await supabase
 			.from("movies_2024")
-			.select("id, title, imdb, external_meta")
+			.select("id, title, director, comment, tags, imdb, external_meta")
 			.eq("id", movieId)
 			.single();
 
@@ -50,6 +51,10 @@ export default async function handler(req, res) {
 			.from("movies_2024")
 			.update({
 				external_meta: nextExternalMeta,
+				search_text: buildMovieSearchText({
+					...movie,
+					external_meta: nextExternalMeta,
+				}),
 			})
 			.eq("id", movie.id);
 
