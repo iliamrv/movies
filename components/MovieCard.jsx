@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import styled from "styled-components";
-import { Film, Trash2, Copy } from "lucide-react";
+import { Film, Trash2, Copy, Star } from "lucide-react";
 
 import { getPosterCandidates } from "../src/utils/posterUtils";
 
@@ -100,6 +100,13 @@ export default function MovieCard({
             <Film size={34} />
           </Placeholder>
         )}
+
+        {showPersonalRating && personalRating !== "" && (
+          <RatingOverlay title={`My rating: ${personalRating}/10`}>
+            <Star size={15} fill="currentColor" />
+            <span>{personalRating}</span>
+          </RatingOverlay>
+        )}
       </PosterLink>
 
       <Body>
@@ -130,9 +137,6 @@ export default function MovieCard({
 
         <Badges>
           {primaryGenre && <Badge>{primaryGenre}</Badge>}
-          {showPersonalRating && personalRating !== "" && (
-            <PersonalBadge>My {personalRating}/10</PersonalBadge>
-          )}
           {imdbRating && <Badge>IMDb {imdbRating}</Badge>}
           {rottenRating && <Badge>RT {rottenRating}</Badge>}
         </Badges>
@@ -201,12 +205,39 @@ const Card = styled.div`
 `;
 
 const PosterLink = styled(Link)`
+  position: relative;
   display: block;
   aspect-ratio: 2 / 3;
   background: #f3f4f6;
   cursor: pointer;
   text-decoration: none;
   color: inherit;
+`;
+
+const RatingOverlay = styled.div`
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #facc15;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.24);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+
+  span {
+    color: #fff;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1;
+  }
 `;
 
 const PosterImage = styled.img`
@@ -313,13 +344,6 @@ const Badge = styled.div`
   padding: 4px 8px;
   border-radius: 999px;
   border: 1px solid #e5e7eb;
-`;
-
-const PersonalBadge = styled(Badge)`
-  border-color: #111827;
-  background: #111827;
-  color: #fff;
-  font-weight: 700;
 `;
 
 const PriorityRow = styled.div`
