@@ -8,6 +8,38 @@ import {
   hasTmdb,
 } from "./movieUtils";
 
+const SEARCH_ALIASES = [
+  ["melville", "мельвиль"],
+];
+
+function getQueryTokenVariants(token) {
+  const variants = new Set([token]);
+
+  SEARCH_ALIASES.forEach((aliasGroup) => {
+    if (aliasGroup.includes(token)) {
+      aliasGroup.forEach((alias) => variants.add(alias));
+    }
+  });
+
+  return Array.from(variants);
+}
+
+export function matchesMovieSearchQuery(searchText, query) {
+  const normalizedSearchText = normalizeSearchText(searchText);
+  const normalizedQuery = normalizeSearchText(query);
+
+  if (!normalizedQuery) return true;
+
+  return normalizedQuery
+    .split(" ")
+    .filter(Boolean)
+    .every((token) =>
+      getQueryTokenVariants(token).some((variant) =>
+        normalizedSearchText.includes(variant)
+      )
+    );
+}
+
 function getDirectorsFromTmdb(tmdb) {
   if (!Array.isArray(tmdb.directors)) return [];
 

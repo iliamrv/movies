@@ -85,6 +85,7 @@ export default function Page() {
                 onPosterError: () => markPosterError(item.id),
               }}
               showActions={false}
+              showPersonalRating
             />
           ))}
         </Grid>

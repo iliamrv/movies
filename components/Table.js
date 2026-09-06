@@ -8,6 +8,7 @@ import { updateMovieRewatchMark } from "../src/api/movies";
 import {
   getExtendedSearchText,
   applyQuickFilter,
+  matchesMovieSearchQuery,
 } from "../src/utils/movieSearchUtils";
 
 import {
@@ -140,15 +141,20 @@ export default function Table({ newItems = [], onMoviePatch }) {
   }
 
   const filtered = useMemo(() => {
-    const query = normalizeSearchText(search);
+    const query = search.trim();
 
     let items = [...newItems];
 
     if (query) {
       items = items.filter((item) => {
-        const searchText =
-          item.search_text || getExtendedSearchText(item, { includeOverview: false });
-        return searchText.includes(query);
+        const searchText = [
+          item.search_text,
+          getExtendedSearchText(item),
+        ]
+          .filter(Boolean)
+          .join(" ");
+
+        return matchesMovieSearchQuery(searchText, query);
       });
     }
 

@@ -12,6 +12,7 @@ import {
   getPrimaryGenre,
   getImdbRating,
   getRottenTomatoesRating,
+  getMovieRating,
   getDaysAgo,
 } from "../src/utils/movieUtils";
 
@@ -21,6 +22,7 @@ export default function MovieCard({
   onRemove,
   onPriorityChange,
   showActions = true,
+  showPersonalRating = false,
 }) {
   const [posterIndex, setPosterIndex] = useState(0);
   const [posterFailed, setPosterFailed] = useState(false);
@@ -32,6 +34,7 @@ export default function MovieCard({
   const primaryGenre = getPrimaryGenre(item);
   const imdbRating = getImdbRating(item);
   const rottenRating = getRottenTomatoesRating(item);
+  const personalRating = getMovieRating(item);
 
   const posterCandidates = useMemo(() => getPosterCandidates(item), [item]);
   const posterSrc = posterCandidates[posterIndex]?.url || "";
@@ -127,6 +130,9 @@ export default function MovieCard({
 
         <Badges>
           {primaryGenre && <Badge>{primaryGenre}</Badge>}
+          {showPersonalRating && personalRating !== "" && (
+            <PersonalBadge>My {personalRating}/10</PersonalBadge>
+          )}
           {imdbRating && <Badge>IMDb {imdbRating}</Badge>}
           {rottenRating && <Badge>RT {rottenRating}</Badge>}
         </Badges>
@@ -308,6 +314,14 @@ const Badge = styled.div`
   border-radius: 999px;
   border: 1px solid #e5e7eb;
 `;
+
+const PersonalBadge = styled(Badge)`
+  border-color: #111827;
+  background: #111827;
+  color: #fff;
+  font-weight: 700;
+`;
+
 const PriorityRow = styled.div`
   display: flex;
   align-items: center;
